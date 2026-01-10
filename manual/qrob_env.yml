@@ -1,0 +1,22 @@
+name: qrob
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - ase
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - pymatgen
+  - pip
+  - pip:
+    - pytest
+
+# Notes:
+# - Minimal, maintainable environment for running qrob utilities.
+# - Add `rdkit` or other heavy packages explicitly if needed.
+# - Create with mamba for speed:
+#     mamba env create -f manual/qrob_env.yml
+#   or with conda:
+#     conda env create -f manual/qrob_env.yml
