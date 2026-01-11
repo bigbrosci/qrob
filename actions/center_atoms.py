@@ -1,4 +1,6 @@
 #!/usr/bin/env python3 
+# center the clusters or gas phase species in the box 
+
 from ase.io import read, write
 
 # Read the POSCAR file containing a cluster in a box
