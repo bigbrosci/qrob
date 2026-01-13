@@ -25,6 +25,12 @@ import os
 import re
 import numpy as np
 from ase.io import read, write
+# ensure repo root on sys.path so brain.poscar can be imported when running script
+script_dir = os.path.dirname(os.path.realpath(__file__))
+repo_root = os.path.abspath(os.path.join(script_dir, '..'))
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+from brain.poscar import parse_atom_targets
 
 
 def parse_selection(tokens, natoms, symbols):
@@ -110,7 +116,17 @@ def main(argv=None):
     natoms = len(atoms)
     symbols = atoms.get_chemical_symbols()
 
-    idxs = parse_selection(selections, natoms, symbols)
+    # Prefer using centralized parser from brain.poscar which handles
+    # element symbols and 0-based indices. Fall back to local parser for
+    # range tokens like '0-5' if needed.
+    try:
+        idxs = parse_atom_targets(selections, file_in)
+    except Exception:
+        idxs = parse_selection(selections, natoms, symbols)
+
+    # If no indices returned but user provided a range token, try local parser
+    if not idxs and any('-' in s for s in selections):
+        idxs = parse_selection(selections, natoms, symbols)
     if not idxs:
         print('No atoms matched the selection tokens. Nothing to do.')
         return 0
