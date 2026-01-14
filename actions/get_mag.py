@@ -1,139 +1,107 @@
 #!/usr/bin/env python3
-"""Read per-atom magnetization from OUTCAR using ASE only.
+"""Extract per-atom magnetization from OUTCAR and print/save selections.
 
 Usage:
-  python get_mag.py [--outcar OUTCAR] [--index IDX] [--output FILE] [--format text|json] [selection...]
+  python3 get_mag.py [targets...]
 
-Selection tokens can be:
- - integer atom index (1-based)
- - range `start-end` or `start-` (to end)
- - element symbol like `C` to select all atoms of that element
-
-If no selection is provided, all atoms are printed.
+Targets are element symbols or 0-based atom indices. If omitted, the script
+writes the full magnetization CSV and prints all atoms.
 """
 
 import sys
 import os
-import re
-import argparse
-import json
+import csv
+import errno
+
+# ensure repo root on sys.path so brain.poscar can be imported
+script_dir = os.path.dirname(os.path.realpath(__file__))
+repo_root = os.path.abspath(os.path.join(script_dir, '..'))
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+
+from brain.poscar import parse_atom_targets
+from brain.outcar import get_mag
 
 try:
     from ase.io import read
 except Exception:
-    print('ASE is required for this script. Install with `pip install ase`.')
-    sys.exit(1)
+    read = None
 
 
-def parse_selection(tokens, symbols):
-    """Return sorted unique 1-based atom indices matching tokens."""
-    n = len(symbols)
-    sel = []
-
-    def add_idx(i):
-        if 1 <= i <= n and i not in sel:
-            sel.append(i)
-
-    for t in tokens:
-        t = t.strip()
-        if not t:
-            continue
-        # single index
-        if t.isdigit():
-            add_idx(int(t))
-            continue
-        # range:  start-end  or start-
-        m = re.match(r"^(\d+)-(\d*)$", t)
-        if m:
-            start = int(m.group(1))
-            end_s = m.group(2)
-            end = int(end_s) if end_s.isdigit() else n
-            for i in range(start, end + 1):
-                add_idx(i)
-            continue
-        # element symbol (case-insensitive)
-        if re.match(r'^[A-Za-z]+$', t):
-            for i, s in enumerate(symbols, start=1):
-                if s.upper() == t.upper():
-                    add_idx(i)
-            continue
-        # unknown token -> ignore
-    sel.sort()
-    return sel
+def read_poscar_symbols(poscar_path='POSCAR'):
+    if read is None:
+        raise RuntimeError('ASE is required to read POSCAR')
+    atoms = read(poscar_path, format='vasp')
+    return atoms.get_chemical_symbols()
 
 
-def parse_args(argv=None):
-    p = argparse.ArgumentParser(description='Extract per-atom magnetization from OUTCAR using ASE')
-    p.add_argument('--outcar', '-f', default='OUTCAR', help='Path to OUTCAR file (default: OUTCAR)')
-    p.add_argument('--index', '-i', type=int, default=-1, help='ASE read index for OUTCAR (default: -1, last)')
-    p.add_argument('--output', '-o', default='Magnetization.txt', help='Output file path')
-    p.add_argument('--format', choices=['text', 'json'], default='text', help='Output format')
-    p.add_argument('selection', nargs='*', help='Selection tokens: indices, ranges (e.g. 1-5, 3-), or element symbols (e.g. Fe)')
-    return p.parse_args(argv)
+def main():
+    args = sys.argv[1:]
 
+    if not os.path.isfile('OUTCAR'):
+        print('No OUTCAR in current path. Bye!', file=sys.stderr)
+        sys.exit(1)
 
-def main(argv=None):
-    args = parse_args(argv)
+    if not os.path.isfile('POSCAR') and not os.path.isfile('CONTCAR'):
+        print('POSCAR or CONTCAR not found; required to map elements', file=sys.stderr)
+        sys.exit(2)
 
-    if not os.path.isfile(args.outcar):
-        print(f'OUTCAR not found: {args.outcar}')
-        return 1
+    poscar_file = 'CONTCAR' if os.path.isfile('CONTCAR') else 'POSCAR'
 
-    # Read requested ionic step from OUTCAR
+    # parse atom selection (0-based indices)
+    targets = args
     try:
-        atoms = read(args.outcar, index=args.index, format='vasp-out')
-    except Exception:
-        atoms = read(args.outcar, index=args.index)
+        selected0 = parse_atom_targets(targets, poscar_file) if targets else []
+    except Exception as e:
+        print(f'Error parsing targets: {e}', file=sys.stderr)
+        sys.exit(3)
 
-    symbols = atoms.get_chemical_symbols()
+    # get per-atom magnetization from OUTCAR (keys are 1-based indices)
+    mag_dict = get_mag()
 
-    if not args.selection:
-        atom_list = list(range(1, len(symbols) + 1))
-    else:
-        atom_list = parse_selection(args.selection, symbols)
+    # get element symbols from POSCAR/CONTCAR
+    symbols = read_poscar_symbols(poscar_file)
 
-    # Try to obtain magnetic moments
-    magmoms = None
+    # write full CSV for all atoms
+    out_csv = 'Magnetization.csv'
+    header = ['Index', 'Element']
+    # determine max length of mag entries
+    maxlen = max((len(v) for v in mag_dict.values()), default=0)
+    for i in range(maxlen):
+        header.append(f'Mag_{i}')
+
     try:
-        magmoms = atoms.get_magnetic_moments()
-    except Exception:
-        try:
-            magmoms = atoms.get_initial_magnetic_moments()
-        except Exception:
-            magmoms = None
+        with open(out_csv, 'w', newline='') as fh:
+            writer = csv.writer(fh)
+            writer.writerow(header)
+            # iterate over atoms in POSCAR order (1-based)
+            for idx0, elem in enumerate(symbols):
+                idx1 = idx0 + 1
+                mags = mag_dict.get(idx1, [])
+                row = [idx1, elem] + mags + [''] * (maxlen - len(mags))
+                writer.writerow(row)
+    except OSError as e:
+        if e.errno == errno.EACCES:
+            print(f'Permission denied writing {out_csv}', file=sys.stderr)
+        raise
 
-    if magmoms is None or len(magmoms) != len(symbols):
-        print('No per-atom magnetic moments found in OUTCAR via ASE.')
-        magmoms = [None] * len(symbols)
-
-    # Prepare output structure
-    out_dict = {}
-    for i, (sym, m) in enumerate(zip(symbols, magmoms), start=1):
-        out_dict[i] = {'element': sym, 'magmom': None if m is None else float(m)}
-
-    # Print selected atoms
-    for idx in atom_list:
-        item = out_dict.get(idx)
-        if item is None:
-            print(idx, '\t', 'N/A')
-        else:
-            m = item['magmom']
-            m_str = 'N/A' if m is None else '{:.6f}'.format(m)
-            print(idx, '\t', item['element'], '\t', m_str)
-
-    # Write output file
-    if args.format == 'text':
-        with open(args.output, 'w') as f_out:
-            for i in sorted(out_dict.keys()):
-                item = out_dict[i]
-                m_str = 'N/A' if item['magmom'] is None else '{:.6f}'.format(item['magmom'])
-                f_out.write(f"{i}\t{item['element']}\t{m_str}\n")
+    # print selected atoms if any, else print all
+    if selected0:
+        print('Index,Element,Magnetizations')
+        for i0 in selected0:
+            i1 = i0 + 1
+            elem = symbols[i0] if 0 <= i0 < len(symbols) else 'N/A'
+            mags = mag_dict.get(i1, [])
+            print(f"{i1},{elem},{','.join(str(x) for x in mags)}")
     else:
-        with open(args.output, 'w') as f_out:
-            json.dump(out_dict, f_out, indent=2)
-
-    return 0
+        print('Index,Element,Magnetizations')
+        for idx0, elem in enumerate(symbols):
+            idx1 = idx0 + 1
+            mags = mag_dict.get(idx1, [])
+            print(f"{idx1},{elem},{','.join(str(x) for x in mags)}")
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    main()
+
+
