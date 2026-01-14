@@ -23,14 +23,3 @@ print(dis_AB_1)
 #print(round(dis_AB_1, 4), '\t',round(dis_AB_2,4))
 
 
-### Print the output in a nicer way
-#print('Atom_A\tAtom_B\tdis_A-B')
-#print('%s\t%s\t%.4f' %(atom_A, atom_B, dis_AB_1))
-
-
-## Not Used 
-#coord_A = positions[atom_A]
-#coord_B = positions[atom_B]
-#dis_AB = np.linalg.norm(coord_A-coord_B)
-#print(round(dis_AB,4))
-

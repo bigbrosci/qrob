@@ -1,3 +1,17 @@
 /brain/mkm.py
 /actions/incar.py
 /actions/hold 
+
+# Ignore local POTPAW libraries (do not commit large binary POTCAR files)
+# Matches directories like books/potpaw_PBE.64/ and books/potpaw_PBE.52/
+books/potpaw_PBE.*
+
+# If you keep a small index file, allow it explicitly (optional)
+# Uncomment to keep a lightweight index: data_potcars
+#!/bin/sh
+# keep data_potcars if needed
+# !books/potpaw_PBE.*/data_potcars
+
+# Ignore POTPAW contents and POTCAR-like files inside any versioned folder
+# Example matches: books/potpaw_PBE.64/<element>/POTCAR and similar
+/books/potpaw_PBE*/*/P*

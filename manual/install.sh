@@ -45,7 +45,7 @@ touch "$BASHRC"
 read -r -d '' NEW_BLOCK <<'EOF' || true
 # >>> q-robot settings >>>
 export ROBOT=$HOME/bin/qrob
-export PATH=$PATH:$ROBOT/actions:$ROBOT/friends/vtst/vtstscripts-937
+export PATH=$PATH:$ROBOT/actions:$ROBOT/friends/vtst/vtstscripts-1040
 export PYTHONPATH=$PYTHONPATH:$ROBOT/brain
 # <<< q-robot settings <<<
 EOF

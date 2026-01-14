@@ -12,16 +12,14 @@ import argparse
 
 PARSER = argparse.ArgumentParser(description='Apply a vector to a molecule.')
 PARSER.add_argument("-A", type=str, default=None,
-                    help="atoms in File_1 will be replaced")
+                    help="atoms in File_A will be replaced")
 PARSER.add_argument("-B", type=str, default=None,
-                    help="Atoms in File_2 will be used for replacement")
+                    help="Atoms in File_B will be used for replacement")
 PARSER.add_argument("-s", nargs = '+',
                     help="Selected Atoms to be replaced")
 PARSER.add_argument("-f", nargs = '+',
                     help="Selected Atoms to be used for replacement")
 ARGS = PARSER.parse_args()
-
-
 
 
 file_1 = ARGS.A

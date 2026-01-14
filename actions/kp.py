@@ -39,6 +39,3 @@ elif len(sys.argv[:]) == 4:
 else:
     print('\n \n Command usages: \n\n 1) To generate KPOINTS by using Q-robot:\t kp.py \n\n 2) To generate specified KPOINTS of 3 3 1:\t kp.py 3 3 1 \n\n ' )
         
-        
-         
-                                                       
