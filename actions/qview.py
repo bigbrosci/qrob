@@ -17,22 +17,34 @@ import argparse
 import numpy as np
 
 # Check if running in Streamlit mode
-STREAMLIT_MODE = False
-try:
-    import streamlit as st
-    # Check if actually running under streamlit
-    if hasattr(st, 'session_state'):
-        try:
-            # This will work only when running under streamlit
-            _ = st.session_state
-            STREAMLIT_MODE = True
-        except:
-            pass
-except ImportError:
-    pass
+def _is_streamlit():
+    """Check if we're running under Streamlit."""
+    # Check if streamlit is in command line args
+    if any('streamlit' in arg for arg in sys.argv):
+        return True
+    # Check by inspecting the call stack for streamlit modules
+    try:
+        import inspect
+        for frame in inspect.stack():
+            if 'streamlit' in frame.filename:
+                return True
+    except:
+        pass
+    # Check for streamlit environment
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+        ctx = get_script_run_ctx()
+        if ctx is not None:
+            return True
+    except ImportError:
+        pass
+    return False
+
+STREAMLIT_MODE = _is_streamlit()
 
 # Only import GUI dependencies if in streamlit mode
 if STREAMLIT_MODE:
+    import streamlit as st
     try:
         import py3Dmol
     except ImportError:
