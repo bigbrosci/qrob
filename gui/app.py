@@ -26,6 +26,15 @@ from incar import standard_incar, tasks_incar
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
+# Load task categories from configuration file
+config_path = Path(__file__).resolve().parent / 'task_config.json'
+if config_path.exists():
+    with open(config_path, 'r') as f:
+        TASK_CATEGORIES = json.load(f)
+else:
+    print(f"Warning: task_config.json not found at {config_path}")
+    TASK_CATEGORIES = {}
+
 # Get available tasks from incar module
 # Create mapping from task key to readable name
 TASK_MAPPING = {}
@@ -54,137 +63,7 @@ for key in tasks_incar.keys():
 AVAILABLE_TASKS = [TASK_MAPPING[key]['display'] for key in sorted(TASK_MAPPING.keys())]
 TASK_KEYS = {value['display'].lower().replace(' ', '_').replace('-', ''): key for key, value in TASK_MAPPING.items()}
 
-# Categorized tasks structure
-TASK_CATEGORIES = {
-    'Functional': {
-        'B3LYP': {
-            'params': {
-                'LHFCALC': 'T',
-                'AEXX': '0.20',
-                'AGGAC': '0.81',
-                'AGGAX': '0.72',
-                'ALDAC': '0.19',
-                'GGA': 'B3'
-            }
-        },
-        'PBE0': {
-            'params': {
-                'LHFCALC': 'T',
-                'AEXX': '0.25',
-                'GGA': 'PE'
-            }
-        },
-        'HF': {
-            'params': {
-                'LHFCALC': 'T',
-                'AEXX': '1.00'
-            }
-        },
-        'HSE03': {
-            'params': {
-                'LHFCALC': 'T',
-                'AEXX': '0.30',
-                'HFSCREEN': '0.3'
-            }
-        },
-        'HSE06': {
-            'params': {
-                'LHFCALC': 'T',
-                'AEXX': '0.25',
-                'HFSCREEN': '0.2'
-            }
-        }
-    },
-    'Model': {
-        'Gas': {
-            'params': {
-                'LVDW': 'F',
-                'IVDW': '0'
-            }
-        },
-        'Bulk': {
-            'params': {
-                'KPAR': '2'
-            }
-        }
-    },
-    'Method': {
-        'TSopt': {
-            'params': {
-                'IBRION': '3',
-                'POTIM': '0.5',
-                'NSW': '100'
-            }
-        },
-        'Workfunction': {
-            'params': {
-                'LVACUUM': 'T',
-                'DIPOL': '1'
-            }
-        },
-        'NEB': {
-            'params': {
-                'IBRION': '1',
-                'POTIM': '0.5',
-                'NSW': '100',
-                'SPRING': '-5'
-            }
-        },
-        'Dimer': {
-            'params': {
-                'IBRION': '2',
-                'POTIM': '0.5',
-                'NSW': '100'
-            }
-        },
-        'MD': {
-            'params': {
-                'IBRION': '0',
-                'MDALGO': '2',
-                'NBLOCK': '5',
-                'NSW': '50000',
-                'POTIM': '1',
-                'SMASS': '0',
-                'TEBEG': '273',
-                'TEEND': '273'
-            }
-        },
-        'ML': {
-            'params': {
-                'ML_LMLFF': 'T'
-            }
-        }
-    },
-    'Analysis': {
-        'Electronic-Properties': {
-            'params': {
-                'LAECHG': 'T',
-                'LCHARG': 'T',
-                'LELF': 'T',
-                'LORBIT': '11',
-                'LWAVE': 'T',
-                'NEDOS': '1000'
-            }
-        },
-        'Band-Structure': {
-            'params': {
-                'LORBIT': '11',
-                'LWAVE': 'T',
-                'ICHARG': '11'
-            }
-        },
-        'Phonon': {
-            'params': {
-                'IBRION': '8',
-                'POTIM': '0.015',
-                'NSW': '1',
-                'NWRITE': '1'
-            }
-        }
-    }
-}
-
-# Merge categorized tasks into TASK_MAPPING
+# Merge categorized tasks from config file into TASK_MAPPING
 for category, tasks in TASK_CATEGORIES.items():
     for task_name, task_data in tasks.items():
         TASK_MAPPING[task_name] = {
