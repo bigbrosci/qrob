@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from lattice import *
 from data import bcc, fcc, hcp
-from data import dict_metals
+from data import *
 from ase import Atoms
 import ase.io 
 from ase.build import molecule
@@ -14,9 +14,17 @@ from ase.constraints import FixAtoms
 import subprocess
 import sys, os
 
-data_dict = dict_metals   ## {element:[E, Natom, lattice_a, lattice_c]
+#data_dict = dict_metals_novdW   ## {element:[E, Natom, lattice_a, lattice_c]
 
-def cssm(metal, data_dict):  # cleave_surfaces_slab_models 
+#vdW_type = sys.argv[1]
+vdW_list=['vdWNo','vdWD2','vdWD3zero','vdWD3BJ','vdWoptB86b','vdWoptB88','vdWoptPBE','vdWDF','vdWDF2','vdWrevDF2','vdWSCAN','vdWTS2','vdWTS21','vdWTS4']
+print('\n' * 2, 'vdW Types: ', '  '.join(vdW_list), '\n'*2)
+vdW_type = input("Choos one vdW type from above >>>  ")
+
+dict_type = 'dict_metals_' + vdW_type
+data_dict = eval(dict_type)   ## {element:[E, Natom, lattice_a, lattice_c]
+
+def cssm(metal, data_dict):  # cleave_stable_surfaces_from_metals 
     name = 'POSCAR_' + metal
     if metal in bcc:   # For bcc metals, cleave 110 surface 
         lattice_a = float(data_dict.get(metal)[2])

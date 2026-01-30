@@ -7,6 +7,7 @@ import sys, os
 from ase.io import read
 from ase.atoms import Atoms
 from difflib import SequenceMatcher
+from data import u_value, j_value, mag_value
 
 '''
 There are five parts in this module:
@@ -91,19 +92,6 @@ def check_pos_car():
     print('POSCAR Not Found. Be careful about the D2, DFT+U parameters.')
     return False, []
 
-### DFT + U 
-u_value = {
-    'Ag': 5.0, 'Cu': 5.0, 'Fe': 5.0, 'Ir': 5.0, 'Ni': 5.0, 'Pd': 5.0,
-    'Pt': 5.0, 'Rh': 5.0, 'Co': 5.0, 'Ru': 5.0, 'Os': 5.0, 'Au': 5.0,
-    'Ti': 5.1, 'Zn': 5.0, 'Sn': 5.0
-}
-
-j_value = {
-    'Ag': 1.0, 'Cu': 1.0, 'Fe': 1.0, 'Ir': 1.0, 'Ni': 1.0, 'Pd': 1.0,
-    'Pt': 1.0, 'Rh': 1.0, 'Co': 1.0, 'Ru': 1.0, 'Os': 1.0, 'Au': 1.0,
-    'Ti': 1.0, 'Zn': 1.0, 'Sn': 1.0
-}
-
 def dftu_update(dftu):
     """Update DFT+U parameters based on POSCAR elements."""
     is_poscar_here, ele_list = check_pos_car()
@@ -151,13 +139,6 @@ def freq_update(freq):
     del standard_incar['d_ncore']
     return standard_incar 
 
-
-### SPIN & MAG
-mag_value = { 
-    'Ag': 0.0, 'Cu': 1.0, 'Fe': 3.0, 'Ir': 0.0, 'Ni': 1.0, 'Pd': 0.0,
-    'Pt': 0.0, 'Rh': 0.0, 'Co': 2.0, 'Ru': 0.0, 'Os': 0.0, 'Au': 0.0,
-    'Ti': 0.0, 'Zn': 0.0, 'Sn': 0.0, 'O': 0.0  # O  default magnetization 
-}
 
 def spin_update(ispin):
     try:

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+
 dict_element = {'1':'H','2':'He','3':'Li','4':'Be','5':'B','6':'C','7':'N','8':'O','9':'F','10':'Ne','11':'Na','12':'Mg','13':'Al','14':'Si','15':'P','16':'S','17':'Cl','18':'Ar','19':'K','20':'Ca','21':'Sc','22':'Ti','23':'V','24':'Cr','25':'Mn','26':'Fe','27':'Co','28':'Ni','29':'Cu','30':'Zn','31':'Ga','32':'Ge','33':'As','34':'Se','35':'Br','36':'Kr','37':'Rb','38':'Sr','39':'Y','40':'Zr','41':'Nb','42':'Mo','43':'Tc','44':'Ru','45':'Rh','46':'Pd','47':'Ag','48':'Cd','49':'In','50':'Sn','51':'Sb','52':'Te','53':'I','54':'Xe','55':'Cs','56':'Ba','57':'La','58':'Ce','59':'Pr','60':'Nd','61':'Pm','62':'Sm','63':'Eu','64':'Gd','65':'Tb','66':'Dy','67':'Ho','68':'Er','69':'Tm','70':'Yb','71':'Lu','72':'Hf','73':'Ta','74':'W','75':'Re','76':'Os','77':'Ir','78':'Pt','79':'Au','80':'Hg','81':'Tl','82':'Pb','83':'Bi','84':'Po','85':'At','86':'Rn','87':'Fr','88':'Ra','89':'Ac','90':'Th','91':'Pa','92':'U','93':'Np','94':'Pu','95':'Am','96':'Cm','97':'Bk','98':'Cf','99':'Es','100':'Fm','101':'Md','102':'No','103':'Lr','104':'Rf','105':'Db','106':'Sg','107':'Bh','108':'Hs','109':'Mt',}
 
 #### Part-0 Dictionaries
@@ -30,8 +31,7 @@ bcc = ['V',  'Cr', 'Mn', 'Fe', 'Nb', 'Pb']
 hcp = ['Mg', 'Sc', 'Ti', 'Co', 'Zn', 'Y', 'Zr', 'Tc', 'Ru', 'Cd', 'Hf', 'Re', 'Os']
 fcc = ['Al', 'Ca', 'Ni', 'Cu', 'Rh', 'Pd', 'Ag', 'Ir', 'Pt', 'Au']
 
-### Metal  Bulk structures from DFT_D2 
-dict_metals_vdWD3zero           = {
+dict_metals           = {    # Lattice Parameter from vdw_D3
 'Ag':(-12.83721745,4,4.0711,4.0711),
 'Co':(-14.76776158,2,2.4729,3.9814),
 'Cu':(-16.95007138,4,3.5683,3.5683),
@@ -46,51 +46,27 @@ dict_metals_vdWD3zero           = {
 } 
 
 ## The user need to modify it by him/herself  <<<  VERT IMPORTTANT!!! 
+### DFT + U 
 u_value = {
-'Ag': 5.0,
-'Cu': 5.0,
-'Fe': 5.0,
-'Ir': 5.0,
-'Ni': 5.0,
-'Pd': 5.0,
-'Pt': 5.0,
-'Rh': 5.0,
-'Co': 5.0,
-'Ru': 5.0,
-'Os': 5.0,        
-'Au': 5.0,        
-'Ti': 5.1,
-'Zn': 5.0,
-'Sn': 5.0,
+    'Ag': 5.0, 'Cu': 5.0, 'Fe': 5.0, 'Ir': 5.0, 'Ni': 5.0, 'Pd': 5.0,
+    'Pt': 5.0, 'Rh': 5.0, 'Co': 5.0, 'Ru': 5.0, 'Os': 5.0, 'Au': 5.0,
+    'Ti': 5.1, 'Zn': 5.0, 'Sn': 5.0
 }
 
 j_value = {
-'Ag': 1.0,
-'Cu': 1.0,
-'Fe': 1.0,
-'Ir': 1.0,
-'Ni': 1.0,
-'Pd': 1.0,
-'Pt': 1.0,
-'Rh': 1.0,
-'Co': 1.0,
-'Ru': 1.0,
-'Os': 1.0,
-'Au': 1.0,
-'Ti': 1.0,        
-'Zn': 1.0,        
-'Sn': 1.0,        
+    'Ag': 1.0, 'Cu': 1.0, 'Fe': 1.0, 'Ir': 1.0, 'Ni': 1.0, 'Pd': 1.0,
+    'Pt': 1.0, 'Rh': 1.0, 'Co': 1.0, 'Ru': 1.0, 'Os': 1.0, 'Au': 1.0,
+    'Ti': 1.0, 'Zn': 1.0, 'Sn': 1.0
+}
+
+### SPIN & MAG
+mag_value = { 
+    'Ag': 0.0, 'Cu': 1.0, 'Fe': 3.0, 'Ir': 0.0, 'Ni': 1.0, 'Pd': 0.0,
+    'Pt': 0.0, 'Rh': 0.0, 'Co': 2.0, 'Ru': 0.0, 'Os': 0.0, 'Au': 0.0,
+    'Ti': 0.0, 'Zn': 0.0, 'Sn': 0.0, 'O': 0.0
 }
 
 #### Information about the potcar databse 
-def get_potcar_data():
-    home = os.path.expanduser('~')
-    data_potcars_file = home + '/bin/q-robot/books/potpaw_PBE.52/data_potcars'
-    file_in = open(data_potcars_file, 'r')
-    data = file_in.read()
-    file_in.close()
-    return eval(data)    
-
 
 def save_dict_csv(dict_in, name):
     import csv
@@ -134,3 +110,54 @@ def eval_dict_json(file_in):
     return dict_json
 
 
+
+#### Cohesive Energy (eV/atom) - from http://www.knowledgedoor.com/2/elements_handbook/cohesive_energy.html
+cohesive_energy = {
+    'Actinium': 4.25, 'Aluminum': 3.39, 'Americium': 2.73, 'Antimony': 2.75, 'Argon': 0.08,
+    'Arsenic': 2.96, 'Barium': 1.9, 'Beryllium': 3.32, 'Bismuth': 2.18, 'Boron': 5.81,
+    'Bromine': 1.22, 'Cadmium': 1.16, 'Calcium': 1.84, 'Carbon': 7.37, 'Cerium': 4.32,
+    'Cesium': 0.804, 'Chlorine': 1.4, 'Chromium': 4.1, 'Cobalt': 4.39, 'Copper': 3.49,
+    'Curium': 3.99, 'Dysprosium': 3.04, 'Erbium': 3.29, 'Europium': 1.86, 'Fluorine': 0.84,
+    'Gadolinium': 4.14, 'Gallium': 2.81, 'Germanium': 3.85, 'Gold': 3.81, 'Hafnium': 6.44,
+    'Holmium': 3.14, 'Indium': 2.52, 'Iodine': 1.11, 'Iridium': 6.94, 'Iron': 4.28,
+    'Krypton': 0.116, 'Lanthanum': 4.47, 'Lead': 2.03, 'Lithium': 1.63, 'Lutetium': 4.43,
+    'Magnesium': 1.51, 'Manganese': 2.92, 'Mercury': 0.67, 'Molybdenum': 6.82, 'Neodymium': 3.4,
+    'Neon': 0.02, 'Neptunium': 4.73, 'Nickel': 4.44, 'Niobium': 7.57, 'Nitrogen': 4.92,
+    'Osmium': 8.17, 'Oxygen': 2.6, 'Palladium': 3.89, 'Phosphorus': 3.43, 'Platinum': 5.84,
+    'Plutonium': 3.6, 'Polonium': 1.5, 'Potassium': 0.934, 'Praseodymium': 3.7, 'Radium': 1.66,
+    'Radon': 0.202, 'Rhenium': 8.03, 'Rhodium': 5.75, 'Rubidium': 0.852, 'Ruthenium': 6.74,
+    'Samarium': 2.14, 'Scandium': 3.9, 'Selenium': 2.46, 'Silicon': 4.63, 'Silver': 2.95,
+    'Sodium': 1.113, 'Strontium': 1.72, 'Sulfur': 2.85, 'Tantalum': 8.1, 'Technetium': 6.85,
+    'Tellurium': 2.19, 'Terbium': 4.05, 'Thallium': 1.88, 'Thorium': 6.2, 'Thulium': 2.42,
+    'Tin': 3.14, 'Titanium': 4.85, 'Tungsten': 8.9, 'Uranium': 5.55, 'Vanadium': 5.31,
+    'Xenon': 0.16, 'Ytterbium': 1.6, 'Yttrium': 4.37, 'Zinc': 1.35, 'Zirconium': 6.25,
+}
+
+#### Electronegativity (CRC values) - Pauling scale
+electronegativity = {
+    'Ac': 1.1, 'Ag': 1.93, 'Al': 1.61, 'Am': 1.3, 'As': 2.18, 'At': 2.2, 'Au': 2.4,
+    'B': 2.04, 'Ba': 0.89, 'Be': 1.57, 'Bi': 1.9, 'Bk': 1.3, 'Br': 2.96,
+    'C': 2.55, 'Ca': 1.0, 'Cd': 1.69, 'Ce': 1.12, 'Cf': 1.3, 'Cl': 3.16, 'Cm': 1.3,
+    'Co': 1.88, 'Cr': 1.66, 'Cs': 0.79, 'Cu': 1.9,
+    'Dy': 1.22,
+    'Er': 1.24, 'Es': 1.3,
+    'F': 3.98, 'Fe': 1.83, 'Fm': 1.3, 'Fr': 0.7,
+    'Ga': 1.81, 'Gd': 1.2, 'Ge': 2.01,
+    'H': 2.2, 'Hf': 1.3, 'Hg': 1.9, 'Ho': 1.23,
+    'I': 2.66, 'In': 1.78, 'Ir': 2.2,
+    'K': 0.82, 'Kr': 3.0,
+    'La': 1.1, 'Li': 0.98, 'Lu': 1.27,
+    'Md': 1.3, 'Mg': 1.31, 'Mn': 1.55, 'Mo': 2.16,
+    'N': 3.04, 'Na': 0.93, 'Nb': 1.6, 'Nd': 1.14, 'Ni': 1.91, 'No': 1.3, 'Np': 1.3,
+    'O': 3.44, 'Os': 2.2,
+    'P': 2.19, 'Pa': 1.5, 'Pb': 1.8, 'Pd': 2.2, 'Po': 2.0, 'Pr': 1.13, 'Pt': 2.2, 'Pu': 1.3,
+    'Ra': 0.9, 'Rb': 0.82, 'Re': 1.9, 'Rh': 2.28, 'Ru': 2.2,
+    'S': 2.58, 'Sb': 2.05, 'Sc': 1.36, 'Se': 2.55, 'Si': 1.9, 'Sm': 1.17, 'Sn': 1.96, 'Sr': 0.95,
+    'Ta': 1.5, 'Tc': 1.9, 'Te': 2.1, 'Th': 1.3, 'Ti': 1.54, 'Tl': 1.8, 'Tm': 1.25,
+    'U': 1.7,
+    'V': 1.63,
+    'W': 1.7,
+    'Xe': 2.6,
+    'Y': 1.22,
+    'Zn': 1.65, 'Zr': 1.33,
+}

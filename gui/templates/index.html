@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q-robot INCAR Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🤖 Q-robot INCAR Generator</h1>
+            <p class="subtitle">Create VASP INCAR files with an intuitive interface</p>
+        </header>
+
+        <div class="content-wrapper">
+            <!-- Left Panel: Task Selection and Parameters -->
+            <div class="panel panel-left">
+                <section class="section">
+                    <h2>📋 Select Calculation Task(s)</h2>
+                    <div class="task-buttons" id="taskButtons">
+                        <!-- Tasks will be populated by JavaScript as buttons -->
+                    </div>
+                </section>
+
+                <section class="section">
+                    <h2>⚙️ Standard Parameters</h2>
+                    <div class="parameter-sections" id="standardSections">
+                        <!-- Standard parameter sections will be populated here -->
+                    </div>
+                </section>
+
+                <section class="section">
+                    <h2>🎯 Task Parameters</h2>
+                    <div id="taskParams" class="task-params-display">
+                        <p class="info-text">Select a task to see its parameters</p>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <h2>✏️ Custom Parameters</h2>
+                    <div class="custom-params">
+                        <div id="customParamsContainer">
+                            <div class="param-input-row">
+                                <input type="text" class="param-key" placeholder="Parameter name (e.g., ISPIN)">
+                                <input type="text" class="param-value" placeholder="Value (e.g., 2)">
+                                <button class="btn-remove" onclick="removeCustomParam(this)">✕</button>
+                            </div>
+                        </div>
+                        <button class="btn-secondary" onclick="addCustomParam()">+ Add Parameter</button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Panel: Preview and Actions -->
+            <div class="panel panel-right">
+                <section class="section">
+                    <h2>👀 INCAR Preview</h2>
+                    <div class="preview-controls">
+                        <button class="btn-primary" onclick="generateINCAR()">Generate INCAR</button>
+                    </div>
+                    <textarea id="incarPreview" class="incar-preview" placeholder="# INCAR preview will appear here. You can edit it before saving!"></textarea>
+                    <div class="preview-stats" id="previewStats"></div>
+                </section>
+
+                <section class="section">
+                    <h2>💾 Save & Export</h2>
+                    <div class="action-buttons">
+                        <button class="btn-success" onclick="downloadINCAR()" id="downloadBtn" disabled>
+                            💾 Download INCAR File
+                        </button>
+                        <button class="btn-secondary" onclick="copyToClipboard()">
+                            📋 Copy to Clipboard
+                        </button>
+                        <button class="btn-secondary" onclick="resetForm()">
+                            🔄 Reset Form
+                        </button>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <h2>ℹ️ Information</h2>
+                    <div class="info-box">
+                        <p><strong>About this tool:</strong></p>
+                        <p>This interface helps you generate VASP INCAR files by combining standard parameters, task-specific settings, and custom options.</p>
+                        <p><strong>Workflow:</strong></p>
+                        <ol>
+                            <li>Select a calculation task or custom parameters</li>
+                            <li>Choose which standard parameter sections to include</li>
+                            <li>Add any custom parameters as needed</li>
+                            <li>Click "Generate INCAR" to preview</li>
+                            <li>Download or copy the generated INCAR file</li>
+                        </ol>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Pass tasks from Flask to JavaScript
+        const tasks = {{ tasks|tojson }};
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

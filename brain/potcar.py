@@ -14,7 +14,7 @@ from typing import Dict, List, Tuple
 
 def _default_potcar_base() -> Path:
     home = Path.home()
-    return home / 'bin' / 'qrob' / 'books'
+    return home / 'Dropbox' / 'bin' / 'qrob' / 'books'
 
 
 def get_potcar_data(version: str = '64') -> Dict:
@@ -198,3 +198,4 @@ def read_potcar(potcar_file: str) -> None:
         print('  '.join(r[i].ljust(widths[i]) for i in range(len(headers))))
     print('-' * len(header_line))
     print('\n' + '%' * 29 + ' Good Luck! ' + '%' * 29 + '\n')
+
