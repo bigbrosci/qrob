@@ -100,6 +100,29 @@ body {
     gap: 10px;
 }
 
+/* Task Categories */
+.task-categories {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.task-category {
+    background: #f9f9f9;
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 4px solid #0099cc;
+}
+
+.category-title {
+    font-size: 1em;
+    font-weight: 600;
+    color: #0099cc;
+    margin: 0 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 /* Task Buttons */
 .task-buttons {
     display: grid;

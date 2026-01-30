@@ -54,48 +54,144 @@ for key in tasks_incar.keys():
 AVAILABLE_TASKS = [TASK_MAPPING[key]['display'] for key in sorted(TASK_MAPPING.keys())]
 TASK_KEYS = {value['display'].lower().replace(' ', '_').replace('-', ''): key for key, value in TASK_MAPPING.items()}
 
-# Add custom tasks
-CUSTOM_TASKS = {
-    'B3LYP-Hybrid': {
-        'display': 'B3LYP-Hybrid',
-        'params': {
-            'LHFCALC': 'T',
-            'AEXX': '0.20',
-            'AGGAC': '0.81',
-            'AGGAX': '0.72',
-            'ALDAC': '0.19',
-            'GGA': 'B3'
+# Categorized tasks structure
+TASK_CATEGORIES = {
+    'Functional': {
+        'B3LYP': {
+            'params': {
+                'LHFCALC': 'T',
+                'AEXX': '0.20',
+                'AGGAC': '0.81',
+                'AGGAX': '0.72',
+                'ALDAC': '0.19',
+                'GGA': 'B3'
+            }
+        },
+        'PBE0': {
+            'params': {
+                'LHFCALC': 'T',
+                'AEXX': '0.25',
+                'GGA': 'PE'
+            }
+        },
+        'HF': {
+            'params': {
+                'LHFCALC': 'T',
+                'AEXX': '1.00'
+            }
+        },
+        'HSE03': {
+            'params': {
+                'LHFCALC': 'T',
+                'AEXX': '0.30',
+                'HFSCREEN': '0.3'
+            }
+        },
+        'HSE06': {
+            'params': {
+                'LHFCALC': 'T',
+                'AEXX': '0.25',
+                'HFSCREEN': '0.2'
+            }
         }
     },
-    'Electronic-Properties': {
-        'display': 'Electronic-Properties',
-        'params': {
-            'LAECHG': 'T',
-            'LCHARG': 'T',
-            'LELF': 'T',
-            'LORBIT': '11',
-            'LWAVE': 'T',
-            'NEDOS': '1000'
+    'Model': {
+        'Gas': {
+            'params': {
+                'LVDW': 'F',
+                'IVDW': '0'
+            }
+        },
+        'Bulk': {
+            'params': {
+                'KPAR': '2'
+            }
         }
     },
-    'MD-Simulation': {
-        'display': 'MD-Simulation',
-        'params': {
-            'IBRION': '0',
-            'MDALGO': '2',
-            'NBLOCK': '5',
-            'NSW': '50000',
-            'POTIM': '1',
-            'SMASS': '0',
-            'TEBEG': '273',
-            'TEEND': '273'
+    'Method': {
+        'TSopt': {
+            'params': {
+                'IBRION': '3',
+                'POTIM': '0.5',
+                'NSW': '100'
+            }
+        },
+        'Workfunction': {
+            'params': {
+                'LVACUUM': 'T',
+                'DIPOL': '1'
+            }
+        },
+        'NEB': {
+            'params': {
+                'IBRION': '1',
+                'POTIM': '0.5',
+                'NSW': '100',
+                'SPRING': '-5'
+            }
+        },
+        'Dimer': {
+            'params': {
+                'IBRION': '2',
+                'POTIM': '0.5',
+                'NSW': '100'
+            }
+        },
+        'MD': {
+            'params': {
+                'IBRION': '0',
+                'MDALGO': '2',
+                'NBLOCK': '5',
+                'NSW': '50000',
+                'POTIM': '1',
+                'SMASS': '0',
+                'TEBEG': '273',
+                'TEEND': '273'
+            }
+        },
+        'ML': {
+            'params': {
+                'ML_LMLFF': 'T'
+            }
+        }
+    },
+    'Analysis': {
+        'Electronic-Properties': {
+            'params': {
+                'LAECHG': 'T',
+                'LCHARG': 'T',
+                'LELF': 'T',
+                'LORBIT': '11',
+                'LWAVE': 'T',
+                'NEDOS': '1000'
+            }
+        },
+        'Band-Structure': {
+            'params': {
+                'LORBIT': '11',
+                'LWAVE': 'T',
+                'ICHARG': '11'
+            }
+        },
+        'Phonon': {
+            'params': {
+                'IBRION': '8',
+                'POTIM': '0.015',
+                'NSW': '1',
+                'NWRITE': '1'
+            }
         }
     }
 }
 
-# Merge custom tasks with imported tasks
-for custom_key, custom_task in CUSTOM_TASKS.items():
-    TASK_MAPPING[custom_key] = custom_task
+# Merge categorized tasks into TASK_MAPPING
+for category, tasks in TASK_CATEGORIES.items():
+    for task_name, task_data in tasks.items():
+        TASK_MAPPING[task_name] = {
+            'display': task_name,
+            'params': task_data['params'],
+            'category': category
+        }
 
 AVAILABLE_TASKS = [TASK_MAPPING[key]['display'] for key in sorted(TASK_MAPPING.keys())]
 TASK_KEYS = {value['display'].lower().replace(' ', '_').replace('-', ''): key for key, value in TASK_MAPPING.items()}
@@ -105,6 +201,12 @@ TASK_KEYS = {value['display'].lower().replace(' ', '_').replace('-', ''): key fo
 def index():
     """Render the main interface."""
     return render_template('index.html', tasks=AVAILABLE_TASKS)
+
+
+@app.route('/api/task-categories', methods=['GET'])
+def get_task_categories():
+    """Get all tasks organized by category."""
+    return jsonify({'categories': TASK_CATEGORIES})
 
 
 @app.route('/api/task-params', methods=['POST'])

@@ -7,27 +7,60 @@ let currentParams = {};
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    initializeTasks();
+    initializeTaskCategories();
     loadStandardParameters();
-    // Auto-select Single task by default
-    setTimeout(() => selectTaskByName('Single'), 100);
 });
 
 /**
- * Initialize task buttons
+ * Initialize task categories with buttons
+ */
+function initializeTaskCategories() {
+    const categoriesContainer = document.getElementById('taskCategories');
+    categoriesContainer.innerHTML = '';
+    
+    // Fetch task categories from backend
+    fetch('/api/task-categories')
+    .then(response => response.json())
+    .then(data => {
+        const categories = data.categories;
+        
+        // Create category sections
+        Object.entries(categories).forEach(([categoryName, tasks]) => {
+            // Create category header
+            const categoryDiv = document.createElement('div');
+            categoryDiv.className = 'task-category';
+            
+            const categoryHeader = document.createElement('h3');
+            categoryHeader.className = 'category-title';
+            categoryHeader.textContent = categoryName;
+            categoryDiv.appendChild(categoryHeader);
+            
+            // Create button container for this category
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'task-buttons';
+            
+            // Create buttons for each task in category
+            Object.entries(tasks).forEach(([taskKey, taskData]) => {
+                const btn = document.createElement('button');
+                btn.className = 'task-btn';
+                btn.textContent = taskKey;
+                btn.id = 'btn-' + taskKey.replace(/[\s-]/g, '_').toLowerCase();
+                btn.onclick = () => selectTask(taskKey, btn);
+                buttonsDiv.appendChild(btn);
+            });
+            
+            categoryDiv.appendChild(buttonsDiv);
+            categoriesContainer.appendChild(categoryDiv);
+        });
+    })
+    .catch(error => console.error('Error loading task categories:', error));
+}
+
+/**
+ * Initialize task buttons (deprecated - keeping for backward compatibility)
  */
 function initializeTasks() {
-    const taskButtonsContainer = document.getElementById('taskButtons');
-    taskButtonsContainer.innerHTML = '';
-    
-    tasks.forEach(task => {
-        const btn = document.createElement('button');
-        btn.className = 'task-btn';
-        btn.textContent = task;
-        btn.id = 'btn-' + task.replace(/[\s-]/g, '_').toLowerCase();
-        btn.onclick = () => selectTask(task, btn);
-        taskButtonsContainer.appendChild(btn);
-    });
+    initializeTaskCategories();
 }
 
 /**
