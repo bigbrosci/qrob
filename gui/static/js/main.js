@@ -24,8 +24,11 @@ function initializeTaskCategories() {
     .then(data => {
         const categories = data.categories;
         
-        // Create category sections
-        Object.entries(categories).forEach(([categoryName, tasks]) => {
+        // Create category sections - categories is now an array to preserve order
+        categories.forEach((categoryObj) => {
+            const categoryName = categoryObj.name;
+            const tasks = categoryObj.tasks;
+            
             // Create category header
             const categoryDiv = document.createElement('div');
             categoryDiv.className = 'task-category';
@@ -45,7 +48,8 @@ function initializeTaskCategories() {
                 btn.className = 'task-btn';
                 btn.textContent = taskKey;
                 btn.id = 'btn-' + taskKey.replace(/[\s-]/g, '_').toLowerCase();
-                btn.onclick = () => selectTask(taskKey, btn);
+                btn.dataset.category = categoryName;  // Store category for single vs multi-select logic
+                btn.onclick = () => selectTask(taskKey, btn, categoryName);
                 buttonsDiv.appendChild(btn);
             });
             
@@ -77,16 +81,36 @@ function selectTaskByName(taskName) {
 }
 
 /**
- * Handle task selection (allow multiple)
+ * Handle task selection (single-select for Functional, multi-select for others)
  */
-function selectTask(taskName, buttonElement) {
-    // Toggle active class on clicked button
-    if (buttonElement.classList.contains('active')) {
-        buttonElement.classList.remove('active');
-        selectedTasks = selectedTasks.filter(task => task !== taskName);
-    } else {
+function selectTask(taskName, buttonElement, categoryName) {
+    // Check if this is the Functional category (single-select)
+    if (categoryName === 'Functional') {
+        // Single-select: deselect all other buttons in this category
+        const allButtons = document.querySelectorAll('.task-btn[data-category="Functional"]');
+        allButtons.forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Select only the clicked button
         buttonElement.classList.add('active');
+        
+        // Update selectedTasks: remove all Functional tasks, add the new one
+        selectedTasks = selectedTasks.filter(task => {
+            // Keep tasks that are not from Functional category
+            const btn = document.querySelector(`#btn-${task.replace(/[\s-]/g, '_').toLowerCase()}`);
+            return btn && btn.dataset.category !== 'Functional';
+        });
         selectedTasks.push(taskName);
+    } else {
+        // Multi-select for Correction, System, Tasks
+        if (buttonElement.classList.contains('active')) {
+            buttonElement.classList.remove('active');
+            selectedTasks = selectedTasks.filter(task => task !== taskName);
+        } else {
+            buttonElement.classList.add('active');
+            selectedTasks.push(taskName);
+        }
     }
     
     // Load task parameters for all selected tasks

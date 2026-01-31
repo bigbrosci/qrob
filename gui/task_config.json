@@ -38,7 +38,7 @@
       }
     }
   },
-  "Model": {
+  "Correction": {
     "Gas": {
       "params": {
         "LVDW": "F",
@@ -51,7 +51,7 @@
       }
     }
   },
-  "Method": {
+  "System": {
     "TSopt": {
       "params": {
         "IBRION": "3",
@@ -98,7 +98,7 @@
       }
     }
   },
-  "Analysis": {
+  "Tasks": {
     "Electronic-Properties": {
       "params": {
         "LAECHG": "T",

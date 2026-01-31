@@ -85,7 +85,18 @@ def index():
 @app.route('/api/task-categories', methods=['GET'])
 def get_task_categories():
     """Get all tasks organized by category."""
-    return jsonify({'categories': TASK_CATEGORIES})
+    # Maintain order: Functional, Correction, System, Tasks
+    category_order = ['Functional', 'Correction', 'System', 'Tasks']
+    ordered_categories = []
+    
+    for cat in category_order:
+        if cat in TASK_CATEGORIES:
+            ordered_categories.append({
+                'name': cat,
+                'tasks': TASK_CATEGORIES[cat]
+            })
+    
+    return jsonify({'categories': ordered_categories})
 
 
 @app.route('/api/task-params', methods=['POST'])
