@@ -203,6 +203,22 @@ function selectTask(taskName, buttonElement, categoryName) {
                 }
             }
             
+            // Mutually exclusive group: Dimer, Opt, Frequency, Single, TSopt, MD, NEB
+            // Only one of these can be selected at a time
+            const mutuallyExclusiveTasks = ['Dimer', 'Opt', 'Frequency', 'Single', 'TSopt', 'MD', 'NEB'];
+            if (mutuallyExclusiveTasks.includes(taskName)) {
+                // Unselect all other tasks in this group
+                mutuallyExclusiveTasks.forEach(task => {
+                    if (task !== taskName) {
+                        const btn = document.querySelector(`#btn-${task.replace(/[\s-]/g, '_').toLowerCase()}`);
+                        if (btn && btn.classList.contains('active')) {
+                            btn.classList.remove('active');
+                            selectedTasks = selectedTasks.filter(t => t !== task);
+                        }
+                    }
+                });
+            }
+            
             // Auto-calculate DFT+U parameters if DFT+U is selected
             if (taskName === 'DFT+U') {
                 calculateDFTUParams();
@@ -338,22 +354,65 @@ function loadTaskParameters(taskNames) {
 }
 
 /**
- * Display task parameters in a readable format
+ * Display task parameters in a readable format with task sections
  */
 function displayTaskParams(params) {
     const taskParamsDiv = document.getElementById('taskParams');
-    taskParamsDiv.innerHTML = '';
     
-    if (Object.keys(params).length === 0) {
-        taskParamsDiv.innerHTML = '<p class="info-text">No parameters for this task</p>';
+    if (!selectedTasks || selectedTasks.length === 0) {
+        taskParamsDiv.innerHTML = '<p class="info-text">Select a task to see its parameters</p>';
         return;
     }
     
-    Object.entries(params).forEach(([key, value]) => {
-        const paramItem = document.createElement('div');
-        paramItem.className = 'param-item';
-        paramItem.innerHTML = `<strong>${key}</strong> = ${value}`;
-        taskParamsDiv.appendChild(paramItem);
+    taskParamsDiv.innerHTML = '';
+    taskParamsDiv.className = 'parameter-sections';
+    
+    // List of non-task items to filter out
+    const nonTaskItems = ['PBE', 'RPBE', 'R2SCAN', 'HSE06', 'D3-0', 'D3-BJ', 'D4', 'Vaspsol', 'DFT+U', 'Gas', 'Bulk', 'Slab', 'Mixer', 'Dipole', 'LAPACK', 'NCORE', 'WRITE'];
+    
+    // Get only actual task items
+    const taskItems = selectedTasks.filter(task => !nonTaskItems.includes(task));
+    
+    if (taskItems.length === 0) {
+        taskParamsDiv.innerHTML = '<p class="info-text">Select a task to see its parameters</p>';
+        return;
+    }
+    
+    // Display each task
+    taskItems.forEach(taskName => {
+        fetch('/api/task-params', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ task: taskName })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (Object.keys(data.params).length > 0) {
+                const taskSection = document.createElement('div');
+                taskSection.className = 'param-section';
+                
+                const sectionLabel = document.createElement('label');
+                sectionLabel.style.fontWeight = '700';
+                sectionLabel.style.color = '#0099cc';
+                sectionLabel.style.cursor = 'default';
+                sectionLabel.style.fontSize = '0.9em';
+                sectionLabel.textContent = taskName;
+                taskSection.appendChild(sectionLabel);
+                
+                const sectionContent = document.createElement('div');
+                sectionContent.className = 'section-content';
+                
+                Object.entries(data.params).forEach(([key, value]) => {
+                    const p = document.createElement('p');
+                    p.innerHTML = `<strong>${key}</strong> = ${value}`;
+                    sectionContent.appendChild(p);
+                });
+                
+                taskSection.appendChild(sectionContent);
+                taskParamsDiv.appendChild(taskSection);
+            }
+        })
+        .catch(error => console.error('Error loading task params for ' + taskName + ':', error));
     });
 }
 
@@ -453,68 +512,117 @@ function removeCustomParam(button) {
  * Generate INCAR file
  */
 function generateINCAR() {
-    // Get included standard sections
-    const includeSections = {};
-    document.querySelectorAll('.param-section').forEach(section => {
-        const sectionKey = section.dataset.section;
-        const isChecked = section.querySelector('input[type="checkbox"]').checked;
-        includeSections[sectionKey] = isChecked;
-    });
+    console.log('generateINCAR called');
+    console.log('selectedTasks:', selectedTasks);
     
-    // Get custom parameters
-    const customParams = {};
-    document.querySelectorAll('.param-input-row').forEach(row => {
-        const key = row.querySelector('.param-key').value;
-        const value = row.querySelector('.param-value').value;
-        if (key && value) {
-            customParams[key] = value;
+    try {
+        // Get included standard sections
+        const includeSections = {};
+        const paramSections = document.querySelectorAll('.param-section');
+        console.log('Found param sections:', paramSections.length);
+        
+        paramSections.forEach(section => {
+            const sectionKey = section.dataset.section;
+            const checkbox = section.querySelector('input[type="checkbox"]');
+            if (checkbox && sectionKey) {
+                includeSections[sectionKey] = checkbox.checked;
+            }
+        });
+        
+        // Get custom parameters
+        const customParams = {};
+        const paramRows = document.querySelectorAll('.param-input-row');
+        console.log('Found custom param rows:', paramRows.length);
+        
+        paramRows.forEach(row => {
+            const keyInput = row.querySelector('.param-key');
+            const valueInput = row.querySelector('.param-value');
+            if (keyInput && valueInput) {
+                const key = keyInput.value;
+                const value = valueInput.value;
+                if (key && value) {
+                    customParams[key] = value;
+                }
+            }
+        });
+        
+        // Add auto-calculated DFT+U parameters if available
+        if (window.dftuParams && selectedTasks.includes('DFT+U')) {
+            Object.assign(customParams, window.dftuParams);
         }
-    });
-    
-    // Add auto-calculated DFT+U parameters if available
-    if (window.dftuParams && selectedTasks.includes('DFT+U')) {
-        Object.assign(customParams, window.dftuParams);
-    }
-    
-    // Add auto-calculated MAGMOM if available
-    if (window.magmomValue && selectedTasks.includes('ISPIN')) {
-        customParams['MAGMOM'] = window.magmomValue;
-    }
-    
-    // Add auto-calculated NEB IMAGES if available
-    if (window.nebImages && selectedTasks.includes('NEB')) {
-        customParams['IMAGES'] = window.nebImages;
-    }
-    
-    // Send to backend
-    fetch('/api/generate-incar', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            tasks: selectedTasks,  // Changed from task to tasks (array)
+        
+        // Add auto-calculated MAGMOM if available
+        if (window.magmomValue && selectedTasks.includes('ISPIN')) {
+            customParams['MAGMOM'] = window.magmomValue;
+        }
+        
+        // Add auto-calculated NEB IMAGES if available
+        if (window.nebImages && selectedTasks.includes('NEB')) {
+            customParams['IMAGES'] = window.nebImages;
+        }
+        
+        const requestBody = {
+            tasks: selectedTasks,
             include_sections: includeSections,
             custom_params: customParams
+        };
+        
+        console.log('Request body:', requestBody);
+        
+        // Send to backend
+        fetch('/api/generate-incar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
         })
-    })
-    .then(response => response.json())
-    .then(data => {
-        displayINCAR(data);
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error generating INCAR');
-    });
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            displayINCAR(data);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error generating INCAR: ' + error.message);
+        });
+    } catch (error) {
+        console.error('Exception in generateINCAR:', error);
+        alert('Exception: ' + error.message);
+    }
 }
 
 /**
  * Display generated INCAR
  */
 function displayINCAR(data) {
+    console.log('displayINCAR called with data:', data);
+    
     const preview = document.getElementById('incarPreview');
     const stats = document.getElementById('previewStats');
     const downloadBtn = document.getElementById('downloadBtn');
+    
+    if (data.error) {
+        console.error('API error:', data.error);
+        preview.value = 'Error: ' + data.error;
+        stats.innerHTML = '<strong style="color: red;">Error generating INCAR</strong>';
+        downloadBtn.disabled = true;
+        return;
+    }
+    
+    if (!data.incar_content) {
+        console.error('No incar_content in response');
+        preview.value = 'Error: No INCAR content generated';
+        stats.innerHTML = '<strong style="color: red;">Error: Empty response</strong>';
+        downloadBtn.disabled = true;
+        return;
+    }
     
     preview.value = data.incar_content;
     

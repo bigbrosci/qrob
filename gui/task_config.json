@@ -98,13 +98,6 @@
         "BMIX_MAG": "0.00001"
       }
     },
-    "Dipole": {
-      "params": {
-        "IDIPOL": "3",
-        "DIPOL": "0.5 0.5 0.3",
-        "LDIPOL": "T"
-      }
-    },
     "LAPACK": {
       "params": {
         "LSCALAPACK": "F"
@@ -138,6 +131,13 @@
     "ISPIN": {
       "params": {
         "ISPIN": "2"
+      }
+    },
+    "Dipole": {
+      "params": {
+        "IDIPOL": "3",
+        "DIPOL": "0.5 0.5 0.3",
+        "LDIPOL": "T"
       }
     },
     "Single": {

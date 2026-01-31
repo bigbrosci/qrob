@@ -32,7 +32,7 @@
 
                 <section class="section">
                     <h2>🎯 Task Parameters</h2>
-                    <div id="taskParams" class="task-params-display">
+                    <div id="taskParams" class="parameter-sections">
                         <p class="info-text">Select a task to see its parameters</p>
                     </div>
                 </section>
@@ -56,16 +56,14 @@
             <div class="panel panel-right">
                 <section class="section">
                     <h2>👀 INCAR Preview</h2>
-                    <div class="preview-controls">
-                        <button class="btn-primary" onclick="generateINCAR()">Generate INCAR</button>
-                    </div>
                     <textarea id="incarPreview" class="incar-preview" placeholder="# INCAR preview will appear here. You can edit it before saving!"></textarea>
                     <div class="preview-stats" id="previewStats"></div>
                 </section>
 
                 <section class="section">
-                    <h2>💾 Save & Export</h2>
+                    <h2>💾 Generate & Save & Export</h2>
                     <div class="action-buttons">
+                        <button class="btn-primary" onclick="generateINCAR()">Generate INCAR</button>
                         <button class="btn-success" onclick="downloadINCAR()" id="downloadBtn" disabled>
                             💾 Download INCAR File
                         </button>
@@ -80,17 +78,39 @@
 
                 <section class="section">
                     <h2>ℹ️ Information</h2>
-                    <div class="info-box">
-                        <p><strong>About this tool:</strong></p>
-                        <p>This interface helps you generate VASP INCAR files by combining standard parameters, task-specific settings, and custom options.</p>
-                        <p><strong>Workflow:</strong></p>
-                        <ol>
-                            <li>Select a calculation task or custom parameters</li>
-                            <li>Choose which standard parameter sections to include</li>
-                            <li>Add any custom parameters as needed</li>
-                            <li>Click "Generate INCAR" to preview</li>
-                            <li>Download or copy the generated INCAR file</li>
-                        </ol>
+                    <div class="info-wrapper info-grid-4">
+                        <!-- 1. About this tool -->
+                        <div class="info-box">
+                            <p><strong>About this tool:</strong></p>
+                            <p>This interface helps you generate VASP INCAR files by combining standard parameters, task-specific settings, and custom options.</p>
+                        </div>
+                        
+                        <!-- 2. WeChat QR -->
+                        <div class="info-box info-box-horizontal">
+                            <div class="info-text">
+                                <p><strong>WeChat</strong></p>
+                                <p style="font-size: 0.85em; margin: 3px 0;">BigBroSci</p>
+                            </div>
+                            <img src="/figs/wechat_qr.jpg" alt="WeChat QR" class="qr-code-small">
+                        </div>
+                        
+                        <!-- 3. QQ Group QR -->
+                        <div class="info-box info-box-horizontal">
+                            <div class="info-text">
+                                <p><strong>QQ Group</strong></p>
+                                <p style="font-size: 0.85em; margin: 3px 0;">1012023869</p>
+                            </div>
+                            <img src="/figs/QQ.jpg" alt="QQ QR" class="qr-code-small">
+                        </div>
+                        
+                        <!-- 4. Donate -->
+                        <div class="info-box info-box-horizontal">
+                            <div class="info-text">
+                                <p><strong>Donate me a</strong></p>
+                                <p style="font-size: 0.85em; margin: 3px 0;">cup of coffee</p>
+                            </div>
+                            <img src="/figs/wechat_pay.jpg" alt="Donate QR" class="qr-code-donate">
+                        </div>
                     </div>
                 </section>
             </div>

@@ -11,7 +11,7 @@ body {
     background: linear-gradient(135deg, #0099cc 0%, #764ba2 100%);
     color: #333;
     min-height: 100vh;
-    padding: 20px;
+    padding: 10px;
 }
 
 .container {
@@ -22,22 +22,23 @@ body {
 .header {
     text-align: center;
     color: white;
-    margin-bottom: 30px;
-    padding: 20px;
+    margin-bottom: 10px;
+    padding: 10px;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 10px;
     backdrop-filter: blur(10px);
 }
 
 .header h1 {
-    font-size: 2.5em;
-    margin-bottom: 10px;
+    font-size: 1.8em;
+    margin-bottom: 5px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .subtitle {
-    font-size: 1.1em;
+    font-size: 0.9em;
     opacity: 0.9;
+    margin: 0;
 }
 
 .content-wrapper {
@@ -50,10 +51,10 @@ body {
 .panel {
     background: white;
     border-radius: 10px;
-    padding: 20px;
+    padding: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
-    max-height: 90vh;
+    max-height: calc(100vh - 150px);
 }
 
 .panel::-webkit-scrollbar {
@@ -75,9 +76,9 @@ body {
 }
 
 .section {
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #f0f0f0;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
 }
 
 .section:last-child {
@@ -85,9 +86,9 @@ body {
 }
 
 .section h2 {
-    font-size: 1.3em;
+    font-size: 1em;
     color: #0099cc;
-    margin-bottom: 15px;
+    margin-bottom: 8px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -109,7 +110,7 @@ body {
 
 .task-category {
     background: #f9f9f9;
-    padding: 10px;
+    padding: 8px;
     border-radius: 8px;
     border-left: 4px solid #0099cc;
 }
@@ -133,17 +134,17 @@ body {
 /* Task Buttons */
 .task-buttons {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+    gap: 4px;
 }
 
 .task-btn {
-    padding: 8px 10px;
+    padding: 5px 8px;
     background: #f5f5f5;
     border: 2px solid #e0e0e0;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 0.8em;
+    font-size: 0.75em;
     font-weight: 500;
     transition: all 0.3s ease;
     text-align: center;
@@ -188,7 +189,7 @@ body {
 .parameter-sections {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
+    gap: 6px;
 }
 
 .param-section {
@@ -225,13 +226,13 @@ body {
 }
 
 .section-content {
-    font-size: 0.85em;
+    font-size: 0.8em;
     color: #666;
-    margin-top: 5px;
-    padding: 8px;
+    margin-top: 3px;
+    padding: 5px;
     background: white;
     border-radius: 4px;
-    max-height: 150px;
+    max-height: 100px;
     overflow-y: auto;
 }
 
@@ -373,13 +374,13 @@ body {
 .incar-preview {
     background: linear-gradient(135deg, #0f0f23 0%, #1a1a3a 100%);
     color: #e0e0ff;
-    padding: 15px;
+    padding: 10px;
     border-radius: 8px;
     font-family: 'Courier New', monospace;
-    font-size: 0.9em;
+    font-size: 0.85em;
     overflow: auto;
-    min-height: 600px;
-    max-height: 800px;
+    min-height: 250px;
+    max-height: 400px;
     width: 100%;
     border: 2px solid #4a7bba;
     line-height: 1.6;
@@ -436,12 +437,13 @@ body {
 /* Action Buttons */
 .action-buttons {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
 }
 
 .action-buttons .btn-success,
-.action-buttons .btn-secondary {
+.action-buttons .btn-secondary,
+.action-buttons .btn-primary {
     margin: 0;
     width: 100%;
 }
@@ -449,24 +451,95 @@ body {
 /* Info Box */
 .info-box {
     background: #f0f5ff;
-    padding: 15px;
+    padding: 10px;
     border-radius: 8px;
     border-left: 4px solid #0099cc;
-    font-size: 0.95em;
-    line-height: 1.6;
+    font-size: 0.9em;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+/* Horizontal layout for boxes with images */
+.info-box-horizontal {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    gap: 10px;
+}
+
+.info-text {
+    flex: 1;
+    padding-right: 10px;
 }
 
 .info-box p {
-    margin: 8px 0;
+    margin: 5px 0;
 }
 
 .info-box ol {
-    margin-left: 20px;
-    margin-top: 10px;
+    margin-left: 15px;
+    margin-top: 5px;
+    padding-left: 0;
 }
 
 .info-box li {
+    margin: 3px 0;
+}
+
+.info-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.info-wrapper.info-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.info-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.join-groups-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.group-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.group-item p {
     margin: 5px 0;
+    font-size: 0.85em;
+}
+
+.qr-code-small {
+    width: 130px;
+    height: 130px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    flex-shrink: 0;
+}
+
+.qr-code-donate {
+    width: 130px;
+    height: 130px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    flex-shrink: 0;
 }
 
 .info-text {
