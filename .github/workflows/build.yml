@@ -39,28 +39,28 @@ jobs:
 
     - name: Upload artifacts (Ubuntu)
       if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: INCAR_Generator_Linux
         path: gui/dist/INCAR_Generator
 
     - name: Upload artifacts (Windows)
       if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: INCAR_Generator_Windows
         path: gui/dist/INCAR_Generator.exe
 
     - name: Upload artifacts (macOS)
       if: runner.os == 'macOS'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: INCAR_Generator_macOS
         path: gui/dist/INCAR_Generator.app
 
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: gui/dist/*
       env:
