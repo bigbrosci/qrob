@@ -114,6 +114,13 @@ body {
     border-left: 4px solid #0099cc;
 }
 
+.category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
 .category-title {
     font-size: 0.85em;
     font-weight: 600;
@@ -157,6 +164,24 @@ body {
     color: white;
     border-color: #0099cc;
     box-shadow: 0 4px 12px rgba(0, 153, 204, 0.4);
+}
+
+.btn-clear-category {
+    padding: 4px 10px;
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 0.75em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn-clear-category:hover {
+    background: #ff5252;
+    transform: scale(1.05);
 }
 
 /* Standard Parameters */

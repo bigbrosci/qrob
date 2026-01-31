@@ -33,10 +33,26 @@ function initializeTaskCategories() {
             const categoryDiv = document.createElement('div');
             categoryDiv.className = 'task-category';
             
+            // Create header with title and clear button
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'category-header';
+            
             const categoryHeader = document.createElement('h3');
             categoryHeader.className = 'category-title';
             categoryHeader.textContent = categoryName;
-            categoryDiv.appendChild(categoryHeader);
+            headerDiv.appendChild(categoryHeader);
+            
+            // Create clear button
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'btn-clear-category';
+            clearBtn.textContent = '✕ Clear';
+            clearBtn.onclick = (e) => {
+                e.stopPropagation();
+                clearCategory(categoryName);
+            };
+            headerDiv.appendChild(clearBtn);
+            
+            categoryDiv.appendChild(headerDiv);
             
             // Create button container for this category
             const buttonsDiv = document.createElement('div');
@@ -56,8 +72,47 @@ function initializeTaskCategories() {
             categoryDiv.appendChild(buttonsDiv);
             categoriesContainer.appendChild(categoryDiv);
         });
+        
+        // Select default buttons after categories are created
+        const defaultButtons = ['PBE', 'NCORE', 'LAPACK', 'WRITE'];
+        defaultButtons.forEach(buttonName => {
+            const btn = document.querySelector(`#btn-${buttonName.replace(/[\s-]/g, '_').toLowerCase()}`);
+            if (btn) {
+                const category = btn.dataset.category;
+                // For Functional category, we need to handle it as single-select
+                if (category === 'Functional') {
+                    const functionalBtns = document.querySelectorAll('.task-btn[data-category="Functional"]');
+                    functionalBtns.forEach(b => b.classList.remove('active'));
+                }
+                btn.classList.add('active');
+                selectedTasks.push(buttonName);
+            }
+        });
+        
+        // Load default task parameters
+        loadTaskParameters(selectedTasks);
     })
     .catch(error => console.error('Error loading task categories:', error));
+}
+
+/**
+ * Clear all selections in a category
+ */
+function clearCategory(categoryName) {
+    // Get all buttons in this category
+    const buttons = document.querySelectorAll(`.task-btn[data-category="${categoryName}"]`);
+    buttons.forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Remove from selectedTasks array
+    selectedTasks = selectedTasks.filter(task => {
+        const btn = document.querySelector(`#btn-${task.replace(/[\s-]/g, '_').toLowerCase()}`);
+        return btn && btn.dataset.category !== categoryName;
+    });
+    
+    // Clear task parameters display
+    document.getElementById('taskParams').innerHTML = '<p class="info-text">Select tasks to see their parameters</p>';
 }
 
 /**
@@ -81,9 +136,13 @@ function selectTaskByName(taskName) {
 }
 
 /**
- * Handle task selection (single-select for Functional, multi-select for others)
+ * Handle task selection (single-select for Functional and vdW, multi-select for others)
  */
 function selectTask(taskName, buttonElement, categoryName) {
+    // vdW buttons are mutually exclusive (single-select within the group)
+    const vdWButtons = ['D3-0', 'D3-BJ', 'D4'];
+    const isVdWButton = vdWButtons.includes(taskName);
+    
     // Check if this is the Functional category (single-select)
     if (categoryName === 'Functional') {
         // Single-select: deselect all other buttons in this category
@@ -102,19 +161,134 @@ function selectTask(taskName, buttonElement, categoryName) {
             return btn && btn.dataset.category !== 'Functional';
         });
         selectedTasks.push(taskName);
+    } else if (isVdWButton) {
+        // vdW single-select: deselect other vdW buttons but keep non-vdW corrections
+        const allVdWButtons = Array.from(document.querySelectorAll('.task-btn')).filter(btn => 
+            vdWButtons.includes(btn.textContent)
+        );
+        allVdWButtons.forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Select only the clicked button
+        buttonElement.classList.add('active');
+        
+        // Update selectedTasks: remove all vdW tasks, add the new one
+        selectedTasks = selectedTasks.filter(task => !vdWButtons.includes(task));
+        selectedTasks.push(taskName);
     } else {
-        // Multi-select for Correction, System, Tasks
+        // Multi-select for other buttons (Correction except vdW, Model, System, Tasks)
         if (buttonElement.classList.contains('active')) {
             buttonElement.classList.remove('active');
             selectedTasks = selectedTasks.filter(task => task !== taskName);
         } else {
             buttonElement.classList.add('active');
             selectedTasks.push(taskName);
+            
+            // Special handling: if Frequency is selected, auto-unselect NCORE
+            if (taskName === 'Frequency') {
+                const ncoreBtn = document.querySelector('#btn-ncore');
+                if (ncoreBtn && ncoreBtn.classList.contains('active')) {
+                    ncoreBtn.classList.remove('active');
+                    selectedTasks = selectedTasks.filter(task => task !== 'NCORE');
+                }
+            }
+            
+            // Special handling: if NCORE is selected and Frequency is active, unselect Frequency
+            if (taskName === 'NCORE') {
+                const frequencyBtn = document.querySelector('#btn-frequency');
+                if (frequencyBtn && frequencyBtn.classList.contains('active')) {
+                    frequencyBtn.classList.remove('active');
+                    selectedTasks = selectedTasks.filter(task => task !== 'Frequency');
+                }
+            }
+            
+            // Auto-calculate DFT+U parameters if DFT+U is selected
+            if (taskName === 'DFT+U') {
+                calculateDFTUParams();
+            }
+            
+            // Auto-calculate MAGMOM if ISPIN is selected
+            if (taskName === 'ISPIN') {
+                calculateMagmom();
+            }
+            
+            // Auto-calculate IMAGES if NEB is selected
+            if (taskName === 'NEB') {
+                calculateNEBImages();
+            }
         }
     }
     
     // Load task parameters for all selected tasks
     loadTaskParameters(selectedTasks);
+}
+
+/**
+ * Auto-calculate DFT+U parameters from POSCAR
+ */
+function calculateDFTUParams() {
+    fetch('/api/calculate-dftu', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('✓ DFT+U parameters calculated:', data);
+            // Store calculated values for later use in INCAR generation
+            window.dftuParams = {
+                'LDAUL': data.LDAUL,
+                'LDAUU': data.LDAUU,
+                'LDAUJ': data.LDAUJ
+            };
+        } else {
+            console.log('Could not auto-calculate DFT+U:', data.error);
+        }
+    })
+    .catch(error => console.log('DFT+U calculation not available:', error));
+}
+
+/**
+ * Auto-calculate MAGMOM from POSCAR
+ */
+function calculateMagmom() {
+    fetch('/api/calculate-magmom', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('✓ MAGMOM calculated:', data.MAGMOM);
+            // Store calculated MAGMOM for later use
+            window.magmomValue = data.MAGMOM;
+        } else {
+            console.log('Could not auto-calculate MAGMOM:', data.error);
+        }
+    })
+    .catch(error => console.log('MAGMOM calculation not available:', error));
+}
+
+/**
+ * Auto-calculate NEB IMAGES from folder count
+ */
+function calculateNEBImages() {
+    fetch('/api/calculate-neb-images', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('✓ NEB IMAGES calculated:', data.IMAGES);
+            // Store calculated IMAGES value
+            window.nebImages = data.IMAGES;
+        } else {
+            console.log('Could not auto-calculate NEB IMAGES:', data.error);
+        }
+    })
+    .catch(error => console.log('NEB calculation not available:', error));
 }
 
 /**
@@ -203,6 +377,11 @@ function displayStandardParameters(standardParams) {
     sectionsDiv.innerHTML = '';
     
     Object.entries(standardParams).forEach(([sectionKey, sectionParams]) => {
+        // Skip the system section (SYSTEM parameter is handled separately and always included)
+        if (sectionKey === 'd_system') {
+            return;
+        }
+        
         const sectionDiv = document.createElement('div');
         sectionDiv.className = 'param-section';
         sectionDiv.dataset.section = sectionKey;
@@ -291,6 +470,21 @@ function generateINCAR() {
             customParams[key] = value;
         }
     });
+    
+    // Add auto-calculated DFT+U parameters if available
+    if (window.dftuParams && selectedTasks.includes('DFT+U')) {
+        Object.assign(customParams, window.dftuParams);
+    }
+    
+    // Add auto-calculated MAGMOM if available
+    if (window.magmomValue && selectedTasks.includes('ISPIN')) {
+        customParams['MAGMOM'] = window.magmomValue;
+    }
+    
+    // Add auto-calculated NEB IMAGES if available
+    if (window.nebImages && selectedTasks.includes('NEB')) {
+        customParams['IMAGES'] = window.nebImages;
+    }
     
     // Send to backend
     fetch('/api/generate-incar', {

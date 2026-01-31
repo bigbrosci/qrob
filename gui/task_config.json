@@ -1,44 +1,69 @@
 {
   "Functional": {
-    "B3LYP": {
+    "PBE": {
       "params": {
-        "LHFCALC": "T",
-        "AEXX": "0.20",
-        "AGGAC": "0.81",
-        "AGGAX": "0.72",
-        "ALDAC": "0.19",
-        "GGA": "B3"
-      }
-    },
-    "PBE0": {
-      "params": {
-        "LHFCALC": "T",
-        "AEXX": "0.25",
         "GGA": "PE"
       }
     },
-    "HF": {
+    "RPBE": {
       "params": {
-        "LHFCALC": "T",
-        "AEXX": "1.00"
+        "GGA": "RP"
       }
     },
-    "HSE03": {
+    "R2SCAN": {
       "params": {
-        "LHFCALC": "T",
-        "AEXX": "0.30",
-        "HFSCREEN": "0.3"
+        "METAGGA": "R2SCAN",
+        "LASPH": "T"
       }
     },
     "HSE06": {
       "params": {
         "LHFCALC": "T",
         "AEXX": "0.25",
+        "GGA": "PE",
         "HFSCREEN": "0.2"
       }
     }
   },
   "Correction": {
+    "D3-0": {
+      "params": {
+        "LVDW": "T",
+        "IVDW": "11"
+      }
+    },
+    "D3-BJ": {
+      "params": {
+        "LVDW": "T",
+        "IVDW": "12"
+      }
+    },
+    "D4": {
+      "params": {
+        "LVDW": "T",
+        "IVDW": "13"
+      }
+    },
+    "Vaspsol": {
+      "params": {
+        "LSOL": "T",
+        "ISOL": "2",
+        "C_MOLAR": "1.0",
+        "R_ION": "4.0",
+        "EFERMI_ref": "-4.57"
+      }
+    },
+    "DFT+U": {
+      "params": {
+        "LDAU": "T",
+        "LDAUTYPE": "2",
+        "LASPH": "T",
+        "LDAUPRINT": "0",
+        "LMAXMIX": "4"
+      }
+    }
+  },
+  "Model": {
     "Gas": {
       "params": {
         "LVDW": "F",
@@ -49,9 +74,83 @@
       "params": {
         "KPAR": "2"
       }
+    },
+    "Slab": {
+      "params": {
+        "IBRION": "2",
+        "POTIM": "0.1",
+        "ISIF": "2",
+        "NSW": "200",
+        "EDIFFG": "-0.05",
+        "EDIFF": "1E-5",
+        "IDIPOL": "3",
+        "DIPOL": "0.5 0.5 0.3",
+        "LDIPOL": "T"
+      }
     }
   },
   "System": {
+    "Mixer": {
+      "params": {
+        "AMIX": "0.2",
+        "BMIX": "0.00001",
+        "AMIX_MAG": "0.8",
+        "BMIX_MAG": "0.00001"
+      }
+    },
+    "Dipole": {
+      "params": {
+        "IDIPOL": "3",
+        "DIPOL": "0.5 0.5 0.3",
+        "LDIPOL": "T"
+      }
+    },
+    "LAPACK": {
+      "params": {
+        "LSCALAPACK": "F"
+      }
+    },
+    "NCORE": {
+      "params": {
+        "NCORE": "8"
+      }
+    },
+    "WRITE": {
+      "params": {
+        "LWAVE": "F",
+        "LCHARG": "F",
+        "LVHAR": "F",
+        "LORBIT": "11",
+        "NWRITE": "0"
+      }
+    }
+  },
+  "Tasks": {
+    "Opt": {
+      "params": {
+        "IBRION": "2",
+        "NSW": "200",
+        "POTIM": "0.1",
+        "EDIFF": "1e-5",
+        "EDIFFG": "-0.05"
+      }
+    },
+    "ISPIN": {
+      "params": {
+        "ISPIN": "2"
+      }
+    },
+    "Single": {
+      "params": {
+        "LAECHG": "T",
+        "LCHARG": "T",
+        "LELF": "T",
+        "LORBIT": "11",
+        "LWAVE": "T",
+        "NEDOS": "1000",
+        "NSW": "0"
+      }
+    },
     "TSopt": {
       "params": {
         "IBRION": "3",
@@ -92,14 +191,7 @@
         "TEEND": "273"
       }
     },
-    "ML": {
-      "params": {
-        "ML_LMLFF": "T"
-      }
-    }
-  },
-  "Tasks": {
-    "Electronic-Properties": {
+    "Electronic": {
       "params": {
         "LAECHG": "T",
         "LCHARG": "T",
@@ -109,19 +201,11 @@
         "NEDOS": "1000"
       }
     },
-    "Band-Structure": {
+    "Frequency": {
       "params": {
-        "LORBIT": "11",
-        "LWAVE": "T",
-        "ICHARG": "11"
-      }
-    },
-    "Phonon": {
-      "params": {
-        "IBRION": "8",
-        "POTIM": "0.015",
-        "NSW": "1",
-        "NWRITE": "1"
+        "IBRION": "5",
+        "NFREE": "2",
+        "POTIM": "0.01"
       }
     }
   }
