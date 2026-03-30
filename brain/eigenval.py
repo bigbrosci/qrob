@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 import sys, math 
 import numpy as np 
-from read_vasprun import * 
-from kpoints import *
-from read_vasprun import * 
+from brain.kpoints import *
+from brain.vasprun import *
 
 
 def read_eigenval_pbe(data_file =  'EIGENVAL'): 
@@ -43,7 +42,7 @@ def save_eigenval_hse():
     start_num = 6 + (num_band_hse + 2) * num_to_be_delete
     file_out.writelines(lines_ei_hse[start_num : ])
     file_out.close()
-    print 'New EIGENVAL for HSE is named as EIGENVAL-HSE'
+    print('New EIGENVAL for HSE is named as EIGENVAL-HSE')
 
 def write_band_energy(data_file =  'EIGENVAL'):
     '''Save the band data for plotting. x-axis are calculated from the kpoints.py part.'''
@@ -58,7 +57,5 @@ def write_band_energy(data_file =  'EIGENVAL'):
            f_out.write('%s ' %(k_i_band_j))
         f_out.write(' \n')
     f_out.close()        
-
-
 
 

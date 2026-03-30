@@ -1,6 +1,6 @@
 #!/user/bin/env python3
 # -*- coding: utf-8 -*-
-from lattice import *
+from .lattice import *
 import os 
 
 def print_thumb():

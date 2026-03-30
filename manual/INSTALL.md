@@ -154,7 +154,7 @@ python -c "import qrob; print('q-robot imported successfully')" # If applicable
 - **Environment variables not loading:** Make sure you reloaded your shell configuration with `source ~/.bashrc` (or appropriate file).
 - **Command not found:** Verify the `ROBOT` variable is set and the path exists.
 - **Conda/Mamba environment creation fails:** Check that your environment file is valid YAML and all dependencies are available.
-- **Permission denied:** If scripts don't run, check file permissions: `chmod +x $ROBOT/actions/*`
+- **Permission denied:** If scripts don't run, check file permissions: `chmod +x $ROBOT/actions_py/* $ROBOT/actions_bash/*`
 
 ## Notes
 

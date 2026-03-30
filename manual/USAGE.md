@@ -9,12 +9,11 @@ conda env create -f manual/qrob_env.yml
 conda activate qrob
 ```
 
-`actions/` Usage Guide
+`actions_py/` Usage Guide
 
-This file documents small utility scripts in `actions/`. It is organised to make it easy to add more script entries later — each script has a short Purpose, Usage, Examples and Notes subsection.
-`actions/` Usage Guide
+See `manual/brain_actions_registry.md` for the Brain ↔ Actions interface map and the new action registry.
 
-This file documents small utility scripts in `actions/`. It is organised to make it easy to add more script entries later — each script has a short Purpose, Usage, Examples and Notes subsection.
+This file documents small utility scripts in `actions_py/`. It is organised to make it easy to add more script entries later — each script has a short Purpose, Usage, Examples and Notes subsection. Shell-based helpers are now collected under `actions_bash/`.
 
 Table of contents
 

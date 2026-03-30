@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, develop ]
     paths:
-      - 'gui/**'
+      - 'incar_gui/**'
       - '.github/workflows/build.yml'
   pull_request:
     branches: [ main ]
@@ -29,12 +29,12 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r gui/requirements.txt
+        pip install -r incar_gui/requirements.txt
         pip install pyinstaller
 
     - name: Build with PyInstaller
       run: |
-        cd gui
+        cd incar_gui
         pyinstaller build_spec.spec
 
     - name: Upload artifacts (Ubuntu)
@@ -42,26 +42,26 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: INCAR_Generator_Linux
-        path: gui/dist/INCAR_Generator
+        path: incar_gui/dist/INCAR_Generator
 
     - name: Upload artifacts (Windows)
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
         name: INCAR_Generator_Windows
-        path: gui/dist/INCAR_Generator.exe
+        path: incar_gui/dist/INCAR_Generator.exe
 
     - name: Upload artifacts (macOS)
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v4
       with:
         name: INCAR_Generator_macOS
-        path: gui/dist/INCAR_Generator.app
+        path: incar_gui/dist/INCAR_Generator.app
 
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v2
       with:
-        files: gui/dist/*
+        files: incar_gui/dist/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

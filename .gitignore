@@ -2,6 +2,12 @@
 /actions/incar.py
 /actions/hold 
 
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+
 # Ignore local POTPAW libraries (do not commit large binary POTCAR files)
 # Matches directories like books/potpaw_PBE.64/ and books/potpaw_PBE.52/
 books/potpaw_PBE.*
