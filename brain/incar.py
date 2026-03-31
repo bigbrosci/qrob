@@ -3,17 +3,18 @@
 This is a cursed script. Spread it without BigBroSci's permission, it will automatically activate a curse, 
 leading to the death of your scientific career and the inability to publish papers.
 '''
-import sys, os
+
+import os
+import sys
 from difflib import SequenceMatcher
-from data import u_value, j_value, mag_value
+
+from data import j_value, mag_value, u_value
 
 try:
     from ase.io import read
-    from ase.atoms import Atoms
     ASE_AVAILABLE = True
 except ImportError:
     read = None
-    Atoms = None
     ASE_AVAILABLE = False
 
 '''
@@ -86,7 +87,7 @@ tasks_incar = {
 
 tasks_recorded = [i.split('_')[2].lower() for i in tasks_incar.keys()]
 
-## Functions to modify the parameters in INCAR file according to the POSCAR
+
 def check_pos_car():
     poscar_paths = ['POSCAR', './01/POSCAR']
     ele_list = []
@@ -95,12 +96,12 @@ def check_pos_car():
         return False, []
     for path in poscar_paths:
         if os.path.isfile(path):
-            atoms = read(path, format='vasp')  # Using ASE to read POSCAR
-            ele_list = atoms.get_chemical_symbols()  # Get the list of element symbols
+            atoms = read(path, format='vasp')
+            ele_list = atoms.get_chemical_symbols()
             return True, ele_list
-    # Executes only if no POSCAR is found
     print('POSCAR Not Found. Be careful about the D2, DFT+U parameters.')
     return False, []
+
 
 def dftu_update(dftu):
     """Update DFT+U parameters based on POSCAR elements."""
@@ -116,15 +117,14 @@ def dftu_update(dftu):
         if element not in unique_elements:
             unique_elements.append(element)
             if element in u_value:
-                ldaul.append(2)  # Apply DFT+U to this element
+                ldaul.append(2)
                 u.append(u_value[element])
                 j.append(j_value[element])
             else:
-                ldaul.append(-1)  # No DFT+U applied
+                ldaul.append(-1)
                 u.append(0)
                 j.append(0)
 
-    # Update DFT+U parameters in the INCAR dictionary
     dftu.update({
         'LDAUL': '  '.join(map(str, ldaul)),
         'LDAUU': '  '.join(map(str, u)),
@@ -139,36 +139,34 @@ def dftu_update(dftu):
 
 
 def neb_update(neb):
-    ''' Add the IMAGE numbers to NEB calculation'''
+    """Add NEB image count based on numbered folders in the current directory."""
     folders = [f for f in os.listdir('.') if os.path.isdir(f)]
-    images =  len([i  for i in folders if i.isdigit()]) - 2 
-    neb.update({'IMAGES':str(images)})
+    images = len([i for i in folders if i.isdigit()]) - 2
+    neb.update({'IMAGES': str(images)})
     return neb
+
 
 def freq_update(freq):
     del standard_incar['d_ncore']
-    return standard_incar 
+    return standard_incar
 
 
 def spin_update(ispin):
+    """Compute MAGMOM from POSCAR symbols."""
+    if not ASE_AVAILABLE:
+        print("ASE not installed—MAGMOM auto-calculation skipped.")
+        return ispin
     try:
-        if not ASE_AVAILABLE:
-            print("ASE not installed—MAGMOM auto-calculation skipped.")
-            return ispin
         atoms = read("POSCAR")
     except FileNotFoundError:
         print("POSCAR cannot be found. Exiting.")
         return
 
-    symbols = atoms.get_chemical_symbols()  # Extract symbols in the order they appear
-    element_counts = {}  # Dictionary to store element counts
+    symbols = atoms.get_chemical_symbols()
+    element_counts = {}
 
-    # Count occurrences of each element while preserving the order
     for symbol in symbols:
-        if symbol in element_counts:
-            element_counts[symbol] += 1
-        else:
-            element_counts[symbol] = 1
+        element_counts[symbol] = element_counts.get(symbol, 0) + 1
 
     magmom_list = []
     for symbol, count in element_counts.items():
@@ -181,163 +179,176 @@ def spin_update(ispin):
     print(f"MAGMOM line updated: {magmom_str}")
     return ispin
 
+
 def analyze_tasks(tasks):
     vdw_list = []
-    unsupported_tasks = []
+    dict_tasks = {}
+    dict_task_groups = {}
 
     for task in tasks:
-        task_lower = task.lower()
-
-        # Handle vdW and SCAN functional warnings
-        if 'vdw' in task_lower:
+        if 'vdw' in task:
             vdw_list.append(task)
-        if 'scan' in task_lower:
+        if 'scan' in task:
             print("VASP 5.4.3 or higher is required for METAGGA = SCAN functional.")
             print("See: https://cms.mpi.univie.ac.at/wiki/index.php/METAGGA")
 
-    # Check if multiple vdW types are set
     if len(vdw_list) >= 2:
         print("You cannot set more than one vdW type at the same time.")
         print(f"Detected vdW types: {' '.join(vdw_list)}")
         print("Please confirm your vdW type and rerun the command.")
         exit()
 
-    dict_tasks = {}
-    dict_task_groups = {}
-
     for task in tasks:
-        if task in tasks_recorded:
-            for k_task, v_task in tasks_incar.items():
-                task_type = k_task.split('_')[2].lower()
-                if task == task_type:
-                    # Handle specific task updates
-                    if task == 'dftu':
-                        dftu_update(v_task)
-                    elif task == 'neb':
-                        neb_update(v_task)
-                    elif task in ['vdwoptb86b', 'vdwoptb88', 'vdwdf2', 'vdwdf', 'vdwoptpbe', 'vdwrevdf2']:
-                        print("Reminder: Copy vdw_kernel.bindat file to your job folder!\n" * 3)
-                    elif task == 'ispin':
-                        spin_update(v_task)
-                        standard_incar['d_elec']['ISPIN'] = '2'
-                    elif task == 'freq': 
-                        freq_update(v_task)
-                    # Update task dictionaries
-                    dict_tasks.update(v_task)
-                    dict_task_groups[k_task] = v_task
-        else:
-            unsupported_tasks.append(task)
-
-    # Handle unsupported tasks
-    if unsupported_tasks:
-        print("The following tasks are not supported:\n")
-        for task in unsupported_tasks:
-            print(f"- {task}")
-        print("\nSupported tasks:\n")
-        print(" ".join(f"- {recorded_task}" for recorded_task in tasks_recorded))
-        print("\nPlease use one of the supported tasks above and rerun the command.")
-        exit()
+        for k_task, v_task in tasks_incar.items():
+            task_type = k_task.split('_')[2].lower()
+            if task == task_type:
+                if task == 'dftu':
+                    dftu_update(v_task)
+                elif task == 'neb':
+                    neb_update(v_task)
+                elif task in ['vdwoptb86b', 'vdwoptb88', 'vdwdf2', 'vdwdf', 'vdwoptpbe', 'vdwrevdf2']:
+                    print("Reminder: Copy vdw_kernel.bindat file to your job folder!\n" * 3)
+                elif task == 'ispin':
+                    spin_update(v_task)
+                    standard_incar['d_elec']['ISPIN'] = '2'
+                elif task == 'freq':
+                    freq_update(v_task)
+                dict_tasks.update(v_task)
+                dict_task_groups[k_task] = v_task
 
     return dict_tasks, dict_task_groups
 
 
 def generate_incar(standard_incar, dict_tasks, dict_task_groups):
-    '''Creat INCAR file.''' 
-    incar_out = open('INCAR', 'w')
-    for k_std, v_std in standard_incar.items():
-        ''' Write the standard incar parameters ''' 
-        incar_out.write('%s\n' %(k_std.upper().replace('D_', '#')))
-        for k, v in v_std.items():
-            if k not in dict_tasks.keys():
-                '''Write the parameters are not affected by the user's task'''
-                incar_out.write('%s = %s \n' %(k, v))
-        incar_out.write('\n')
-    
-    for k_task, v_task in dict_task_groups.items():
-        ''' Write the specific parameters for the tasks'''
-        incar_out.write('\n%s \n' %(k_task.upper().replace('D_', '#')))
-        for k, v in v_task.items():
-            incar_out.write('%s = %s \n' %(k, v))
-    incar_out.close()        
+    """Create the INCAR file from the supplied parameter groups."""
+    with open('INCAR', 'w') as incar_out:
+        for k_std, v_std in standard_incar.items():
+            incar_out.write('%s\n' % (k_std.upper().replace('D_', '#')))
+            for k, v in v_std.items():
+                if k not in dict_tasks:
+                    incar_out.write('%s = %s \n' % (k, v))
+            incar_out.write('\n')
+
+        for k_task, v_task in dict_task_groups.items():
+            incar_out.write('\n%s \n' % (k_task.upper().replace('D_', '#')))
+            for k, v in v_task.items():
+                incar_out.write('%s = %s \n' % (k, v))
+
 
 def incar_alter(parameter, value):
-    '''Change the parameter values, if the parameter is not in the INCAR, then add it. '''
-    f = open('INCAR', 'r')
-    lines = f.readlines()
-    f.close()
-    is_or_not = False 
+    """Change or append a parameter in the INCAR file."""
     with open('INCAR') as myfile:
-        if parameter in myfile.read():
-            is_or_not = True
-    if is_or_not:   
-        f = open('INCAR', 'w')
-        for line in lines:
-            if parameter in line:
-                f.write('%s = %s\n' %(parameter, value))
-            else:
-                f.write(line)
-        f.close()    
+        contents = myfile.read()
+    exists = parameter in contents
+
+    if exists:
+        with open('INCAR') as infile:
+            lines = infile.readlines()
+        with open('INCAR', 'w') as outfile:
+            for line in lines:
+                if parameter in line:
+                    outfile.write('%s = %s\n' % (parameter, value))
+                else:
+                    outfile.write(line)
     else:
-        f = open('INCAR', 'a+')
-        f.write('%s = %s\n' %(parameter, value))
-        f.close()
-        
+        with open('INCAR', 'a+') as outfile:
+            outfile.write('%s = %s\n' % (parameter, value))
+
+
 def incar_delete(parameter):
-    '''Delete the parameter from INCAR file '''
-    f = open('INCAR', 'r')
-    lines = f.readlines()
-    f.close()
-    f = open('INCAR', 'w')
-    for line in lines:
-        if parameter not in line:
-            f.write(line)
-    f.close()    
+    """Remove a parameter from the INCAR file."""
+    with open('INCAR') as infile:
+        lines = infile.readlines()
+    with open('INCAR', 'w') as outfile:
+        for line in lines:
+            if parameter not in line:
+                outfile.write(line)
+
 
 def set_ncore(ncore):
-    '''NCORE/paralization can not be used for frequency calculations '''
+    """Add NCORE unless a frequency-related IBRION is requested."""
     if not os.path.isfile('INCAR'):
         print('No INCAR found. Can not add the NCORE parameter to it.')
-    else:    
-        file_in = open('INCAR', 'r')
+        return
+
+    with open('INCAR') as file_in:
         lines = file_in.readlines()
-        file_in.close()
-        for line in lines:
-            if 'IBRION' in line:
-                value = line.rstrip().split('=')[1].strip()
-                if value not in ['5', '6', '7', '8']:
-                    incar_alter('NCORE', ncore)
-                else:
-                    incar_delete('NCORE')    
+
+    for line in lines:
+        if 'IBRION' in line:
+            value = line.rstrip().split('=')[1].strip()
+            if value not in ['5', '6', '7', '8']:
+                incar_alter('NCORE', ncore)
+            else:
+                incar_delete('NCORE')
+
 
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
-tasks = [i.lower() for i in sys.argv[1:]]
-tasks_not_recorded = []
-for i in tasks:
-    if i not in tasks_recorded:
-        tasks_not_recorded.append(i)
 
-if len(tasks_not_recorded) >= 1:
+def ensure_supported_tasks(tasks):
+    """Raise if any submitted task names are not defined."""
+    tasks_not_recorded = [task for task in tasks if task not in tasks_recorded]
+    if not tasks_not_recorded:
+        return
+
     suggestions = []
-    for i in tasks_not_recorded:
-        for j in tasks_recorded:
-            if similar(i, j) >= 0.6:
-                suggestions.append(f"- {i} is not supported. Did you mean: {j}?")
+    for task in tasks_not_recorded:
+        for recorded_task in tasks_recorded:
+            if similar(task, recorded_task) >= 0.6:
+                suggestions.append(f"- {task} is not supported. Did you mean: {recorded_task}?")
 
-    if suggestions:
-        print("\nThe following tasks are not supported but have close matches:\n")
-        print("\n".join(suggestions))
-    else:
-        print("\nUnsupported tasks detected:\n")
-        for task in tasks_not_recorded:
-            print(f"- {task}")
-
-    print("\nSupported task keywords:\n")
-    print(" ".join(f"\n{task}" for task in tasks_recorded))
-    print("\nPlease use one of the supported tasks above and run the command again.")
-    exit()
+    raise UnsupportedTasksError(tasks_not_recorded, suggestions)
 
 
-#dict_tasks, dict_task_groups = analyze_tasks(tasks)
-#generate_incar(standard_incar, dict_tasks, dict_task_groups)
+class UnsupportedTasksError(Exception):
+    """Used when the user requests tasks that are not registered."""
+
+    def __init__(self, unsupported_tasks, suggestions):
+        self.unsupported_tasks = unsupported_tasks
+        self.suggestions = suggestions
+        super().__init__(self._build_message())
+
+    def _build_message(self):
+        lines = []
+        if self.suggestions:
+            lines.append("\nThe following tasks are not supported but have close matches:\n")
+            lines.append("\n".join(self.suggestions))
+        else:
+            lines.append("\nUnsupported tasks detected:\n")
+            lines.extend(f"- {task}" for task in self.unsupported_tasks)
+        lines.append("\nSupported task keywords:\n")
+        lines.append(" ".join(f"\n{task}" for task in tasks_recorded))
+        lines.append("\nPlease use one of the supported tasks above and run the command again.")
+        return "\n".join(lines)
+
+
+def parse_tasks(argv=None):
+    """Return a lower-case list of tasks provided via argv."""
+    if argv is None:
+        argv = sys.argv[1:]
+    return [item.lower() for item in argv]
+
+
+def build_incar(tasks):
+    """Analyze the requested tasks and write settings to INCAR."""
+    normalized_tasks = [task.lower() for task in tasks]
+    ensure_supported_tasks(normalized_tasks)
+    dict_tasks, dict_task_groups = analyze_tasks(normalized_tasks)
+    generate_incar(standard_incar, dict_tasks, dict_task_groups)
+    return dict_tasks, dict_task_groups
+
+
+def main(argv=None):
+    """Command-line entry point for INCAR generation."""
+    tasks = parse_tasks(argv)
+    try:
+        build_incar(tasks)
+    except UnsupportedTasksError as exc:
+        print(exc, file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()
