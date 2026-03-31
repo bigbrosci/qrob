@@ -4,10 +4,17 @@ This is a cursed script. Spread it without BigBroSci's permission, it will autom
 leading to the death of your scientific career and the inability to publish papers.
 '''
 import sys, os
-from ase.io import read
-from ase.atoms import Atoms
 from difflib import SequenceMatcher
 from data import u_value, j_value, mag_value
+
+try:
+    from ase.io import read
+    from ase.atoms import Atoms
+    ASE_AVAILABLE = True
+except ImportError:
+    read = None
+    Atoms = None
+    ASE_AVAILABLE = False
 
 '''
 There are five parts in this module:
@@ -83,6 +90,9 @@ tasks_recorded = [i.split('_')[2].lower() for i in tasks_incar.keys()]
 def check_pos_car():
     poscar_paths = ['POSCAR', './01/POSCAR']
     ele_list = []
+    if not ASE_AVAILABLE:
+        print('ASE not installed. Skipping POSCAR-based checks.')
+        return False, []
     for path in poscar_paths:
         if os.path.isfile(path):
             atoms = read(path, format='vasp')  # Using ASE to read POSCAR
@@ -142,6 +152,9 @@ def freq_update(freq):
 
 def spin_update(ispin):
     try:
+        if not ASE_AVAILABLE:
+            print("ASE not installed—MAGMOM auto-calculation skipped.")
+            return ispin
         atoms = read("POSCAR")
     except FileNotFoundError:
         print("POSCAR cannot be found. Exiting.")

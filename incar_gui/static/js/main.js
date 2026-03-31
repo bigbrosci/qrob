@@ -368,7 +368,7 @@ function displayTaskParams(params) {
     taskParamsDiv.className = 'parameter-sections';
     
     // List of non-task items to filter out
-    const nonTaskItems = ['PBE', 'RPBE', 'R2SCAN', 'HSE06', 'D3-0', 'D3-BJ', 'D4', 'Vaspsol', 'DFT+U', 'Gas', 'Bulk', 'Slab', 'Mixer', 'Dipole', 'LAPACK', 'NCORE', 'WRITE'];
+    const nonTaskItems = ['PBE', 'RPBE', 'R2SCAN', 'HSE06', 'D3-0', 'D3-BJ', 'D4', 'Vaspsol', 'DFT+U', 'Gas', 'Bulk', 'Slab', 'Mixer', 'LAPACK', 'NCORE', 'WRITE'];
     
     // Get only actual task items
     const taskItems = selectedTasks.filter(task => !nonTaskItems.includes(task));

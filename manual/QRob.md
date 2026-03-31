@@ -1,3 +1,33 @@
+## Project overview
+
+QROB is a workflow-oriented toolkit for routine VASP work. It is organized like
+an assistant robot for computational materials tasks: generate INCAR settings,
+inspect and edit POSCAR structures, and run small day-to-day utilities.
+
+### Project layout
+
+- `brain/`: reusable core logic for VASP-related parsing and parameter generation.
+- `actions_py/` and `actions_bash/`: utilities built on top of `brain/` and ASE.
+- `incar_gui/`: Flask interface for INCAR generation, documented in
+  `incar_gui/INTRODUCTION.md`.
+- `geo_gui/`: Streamlit interface for editing POSCAR structures.
+- `manual/`: installation and usage notes, now collected in this `QRob.md`.
+- `books/`: example/reference structures and related data files.
+- `friends/`: bundled third-party helper scripts.
+
+### Quick start
+
+1. Install dependencies and read `manual/QRob.md` (this file) for setup steps.
+2. Run `python incar_gui/app.py` for the INCAR generator, or `streamlit run
+   geo_gui/geo_gui.py` for the geometry interface after activating your
+   environment.
+
+### Direction
+
+The long-term goal is to make routine VASP operations feel like using a small
+domain-specific robot: keep the `brain` knowledge reusable, the `actions`
+concrete, and the GUI modules lightweight helpers for building models and inputs.
+
 ## Core ideas in the Q-robot：
 
 1)  We treat the robot as a friend who can be easily updated to higher version;
@@ -1466,3 +1496,85 @@ qli@p015:~/teklahome/ru_chbr/upload/gas/CH4/freq$ zpe.py
 ```
 
 * If `NWRITE = 3`, each frequency will be written twice in the `OUTCAR`. The scripts check the `NWRITE` parameter in the `OUTCAR` and remove the duplicated frequency to calculate the entropy and ZPE.
+
+## Installation Guide (from INSTALL.md)
+
+1. **Clone the repo**
+
+   ```bash
+   git clone https://github.com/bigbrosci/qrob.git
+   cd qrob
+   git pull
+   ```
+
+2. **Move to your chosen directory** (home-`bin` or Dropbox). Recommended paths:
+   * `$HOME/Dropbox/bin/qrob`
+   * `$HOME/bin/qrob`
+
+3. **Export environment variables** in your shell profile (`~/.zshrc`, `~/.bashrc`, etc.):
+
+   ```bash
+   export QHOME="/path/to/installation"
+   export ROBOT=$QHOME/qrob
+   export PATH=$PATH:$ROBOT/actions:$ROBOT/friends/vtstscripts-1040
+   export PYTHONPATH=$PYTHONPATH:$ROBOT/brain
+   ```
+
+   On macOS clusters like Marenostrum, either load the `python` module first or source
+   `brain/get_up.sh` to set the same variables. Windows PowerShell users set
+   `$env:ROBOT` and append to `$env:Path`.
+
+4. **Create the conda/mamba environment** using `manual/qrob_env.yml`:
+
+   ```bash
+   mamba env create -f ~/path/to/qrob/manual/qrob_env.yml
+   conda activate qrob
+   ```
+
+   (You can also use `conda env create -f ...` if mamba is unavailable.)
+
+5. **Verify**
+
+   ```bash
+   echo $ROBOT
+   ls -la $ROBOT
+   echo $PATH | grep -o "[^:]*actions[^:]*"
+   python -c "import qrob; print('q-robot imported successfully')"
+   ```
+
+   If the PATH or environment variables fail to load, re-source your profile (`source ~/.zshrc` or similar) or restart the shell.
+
+*Note: `manual/install.sh` was an empty placeholder script, so the steps above fully supersede it before the file was deleted.*
+
+## Usage Notes (from USAGE.md)
+
+### Prerequisites
+
+* Install Anaconda/Miniconda from https://www.anaconda.com or the official docs site
+  and follow the installer for your platform.
+* Create and activate the `qrob` environment via `manual/qrob_env.yml`:
+
+  ```bash
+  conda env create -f manual/qrob_env.yml
+  conda activate qrob
+  ```
+
+### Actions catalog
+
+See `manual/brain_actions_registry.md` for the complete Brain ↔ Actions registry.
+The `actions_py/` folder holds daily helper scripts; each entry usually includes a short
+purpose, usage, examples, and notes. Use `actions_bash/` for shell-based helpers.
+
+### Utility Templates
+
+* `reformat.py`: `reformat.py FILE [c|d]`
+* `sort_atoms_by_ele.py`: `sort_atoms_by_ele.py FILE [ELE1 ELE2 ...]`
+
+Any future script entry should follow the pattern shown above (Purpose, Usage, Example,
+Notes) so additional tools can be documented systematically.
+
+### Dependencies & Troubleshooting
+
+* Install ASE for scripts that need POSCAR-based helpers: `pip install ase`.
+* If you encounter issues, add short unit examples or a `tests/` directory with small
+  POSCAR fixtures to validate actions.

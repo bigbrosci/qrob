@@ -6,6 +6,8 @@ A Flask-based GUI for generating VASP INCAR files using the brain.incar module.
 
 import os
 import sys
+import time
+import webbrowser
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, send_file
 from io import BytesIO
@@ -35,6 +37,10 @@ except ImportError:
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Use loopback address explicitly to avoid macOS AirPlay intercepting localhost:5000.
+GUI_HOST = os.environ.get('QROBOT_HOST', '127.0.0.1')
+GUI_PORT = int(os.environ.get('QROBOT_PORT', '5001'))
 
 # Load task categories from configuration file
 config_path = Path(__file__).resolve().parent / 'task_config.json'
@@ -503,5 +509,45 @@ def calculate_neb_images():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 
+def launch_gui():
+    """Launch the Flask UI with helpful startup messaging."""
+    gui_dir = Path(__file__).parent
+    
+    print("\n" + "="*60)
+    print("🤖 Q-robot INCAR Generator - Web Interface")
+    print("="*60)
+
+    if not (gui_dir / 'app.py').exists():
+        print("❌ Error: app.py not found in the current directory")
+        sys.exit(1)
+
+    # Check Flask dependency (importing again for a friendly message)
+    try:
+        import flask  # noqa: F401
+        print("✓ Flask is installed")
+    except ImportError:
+        print("❌ Error: Flask is not installed")
+        print("   Run: pip install -r requirements.txt")
+        sys.exit(1)
+
+    os.chdir(gui_dir)
+
+    print("\n📋 Starting the application...")
+    print(f"   - Server: http://{GUI_HOST}:{GUI_PORT}")
+    print("   - Press Ctrl+C to stop\n")
+
+    time.sleep(1)
+
+    try:
+        print("🌐 Opening browser...")
+        webbrowser.open(f"http://{GUI_HOST}:{GUI_PORT}")
+    except Exception:
+        print("ℹ️  Could not open browser automatically")
+        print(f"   Please open: http://{GUI_HOST}:{GUI_PORT}")
+
+    print("\n🚀 Application starting...\n")
+    app.run(debug=True, host=GUI_HOST, port=GUI_PORT)
+
+
 if __name__ == '__main__':
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    launch_gui()

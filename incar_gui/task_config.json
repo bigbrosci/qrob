@@ -66,13 +66,15 @@
   "Model": {
     "Gas": {
       "params": {
-        "LVDW": "F",
-        "IVDW": "0"
+        "ISMEAR": "0",
+        "SIGMA": "0.01"
       }
     },
     "Bulk": {
       "params": {
-        "KPAR": "2"
+        "ISIF": "3",
+        "ENCUT": "700",
+        "LDIPOL": "F"
       }
     },
     "Slab": {
@@ -135,48 +137,48 @@
     },
     "Dipole": {
       "params": {
-        "IDIPOL": "3",
-        "DIPOL": "0.5 0.5 0.3",
-        "LDIPOL": "T"
+        "LDIPOL": "T",
+        "IDIPOL": "3"
       }
     },
     "Single": {
       "params": {
-        "LAECHG": "T",
-        "LCHARG": "T",
-        "LELF": "T",
-        "LORBIT": "11",
-        "LWAVE": "T",
-        "NEDOS": "1000",
         "NSW": "0"
       }
     },
     "TSopt": {
       "params": {
-        "IBRION": "3",
-        "POTIM": "0.5",
-        "NSW": "100"
+        "IBRION": "1",
+        "POTIM": "0.05",
+        "NSW": "500"
       }
     },
     "Workfunction": {
       "params": {
-        "LVACUUM": "T",
-        "DIPOL": "1"
+        "LVHAR": "T",
+        "LDIPOL": "T",
+        "IDIPOL": "3"
       }
     },
     "NEB": {
       "params": {
         "IBRION": "1",
-        "POTIM": "0.5",
-        "NSW": "100",
+        "POTIM": "0.1",
+        "NSW": "500",
         "SPRING": "-5"
       }
     },
     "Dimer": {
       "params": {
-        "IBRION": "2",
-        "POTIM": "0.5",
-        "NSW": "100"
+        "IBRION": "44",
+        "POTIM": "0.10",
+        "NSW": "500",
+        "EDIFFG": "-0.03",
+        "FINDIFF": "2",
+        "DIMER_DIST": "0.01",
+        "MINROT": "0.0087266",
+        "STEP_SIZE": "0.01",
+        "STEP_MAX": "0.10"
       }
     },
     "MD": {
@@ -205,7 +207,7 @@
       "params": {
         "IBRION": "5",
         "NFREE": "2",
-        "POTIM": "0.01"
+        "POTIM": "0.015"
       }
     }
   }
