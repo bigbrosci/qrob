@@ -24,11 +24,11 @@ This document keeps the QRob overview, setup notes, and pointers aligned with th
 
 ### 2.2 Shell configuration
 
-Add these lines to your shell startup file (`~/.bashrc`, `~/.zshrc`, `~/.profile`, etc.) so the commands, scripts, and modules are always available:
+Add these lines to your shell startup file (`~/.bashrc`, `~/.zshrc`, `~/.profile`, etc.) so the commands, scripts, and modules are always available. Prepending your existing `PATH` keeps the system defaults first and avoids surprising overrides:
 
 ```bash
 export QROB_ROOT="$HOME/bin/qrob"
-export PATH="$QROB_ROOT/actions_py:$QROB_ROOT/actions_bash:$PATH"
+export PATH="$PATH:$QROB_ROOT/actions_py:$QROB_ROOT/actions_bash"
 export PYTHONPATH="$QROB_ROOT/brain${PYTHONPATH:+:$PYTHONPATH}"
 ```
 
