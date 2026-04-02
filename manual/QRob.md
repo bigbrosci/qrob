@@ -2,11 +2,17 @@
 
 This document keeps the QRob overview, setup notes, and pointers aligned with the repository layout rooted at `~/bin/qrob`. Use it as the single place to learn how the toolkit is structured, how to activate it, and where to find the scripts, GUIs, and reference data now that the layout and naming have been refreshed.
 
+### 中文说明
+本文档保持与 `~/bin/qrob` 实际结构一致，提供项目组织、启动步骤、工具位置等信息，方便快速掌握 QRob 各个子模块及其用途。
+
 ## 1. Goals and big picture
 
 - **What QRob does** – A VASP-focused helper robot: the `brain/` package encodes reusable parsers and parameter dictionaries, the `actions_py/` and `actions_bash/` folders expose concrete CLI helpers on top of that knowledge, and the `incar_gui/` / `geo_gui/` folders deliver lightweight web interfaces for composing inputs and editing structures.
 - **How it is organised** – Think of `qrob` as a single workspace. The `brain/` module contains the logic (INCAR/KPOINTS/POSCAR utilities and dictionaries) and the `actions_*` layers are the commands you run every day. The `books/` and `friends/` folders hold supplemental data and third-party scripts, while the GUIs live under their own directories with dedicated docs.
 - **Updates** – Add new parameters in `brain/`, extend CLI helpers in `actions_py/`, or drop new third-party helpers in `friends/`. Most customisations only need you to edit Python dictionaries or add a script, so you generally will not touch the old `Q_robot` naming anymore.
+
+### 中文说明
+QRob 就像一个专注 VASP 的机器人：`brain/` 封装参数与读写逻辑，`actions_*` 提供常用命令，`books/`、`friends/` 是外部参考库，各部分独立而互补，维护起来也更容易。
 
 ## 2. Quick start
 
@@ -35,6 +41,9 @@ export PYTHONPATH="$QROB_ROOT/brain${PYTHONPATH:+:$PYTHONPATH}"
 - Adjust `$HOME/bin/qrob` if you keep the repo elsewhere.
 - If you plan to run VTST scripts from `friends/vtstscripts-1040/`, append that directory to `PATH` as well (e.g., `export PATH="$QROB_ROOT/friends/vtstscripts-1040:$PATH"`).
 - Restart your shell or `source` the file to pick up the changes.
+
+### 中文说明
+在终端 RC 配置里先定义 `QROB_ROOT`，再把 `actions_py/`、`actions_bash/` 加入 `PATH`，`brain/` 追加到 `PYTHONPATH`，这样命令与模块都能被无缝引用，保留原 `PATH` 顺序。
 
 ### 2.3 Getting started with scripts
 
@@ -72,6 +81,9 @@ export PYTHONPATH="$QROB_ROOT/brain${PYTHONPATH:+:$PYTHONPATH}"
   3. `pp.py` – build POTCAR fragments for single or mixed-element jobs.
   4. `cssm.py`, `fix_by_layer.py`, `translate.py`, `rotate.py`, etc. – operate on POSCAR files when preparing slabs or defects.
 - Refer to `actions_py/USAGE.md` for friendly usage notes for each script, especially `reformat.py` and `sort_atoms_by_ele.py` (the short README there also explains how to add future entries).
+
+### 中文说明
+`actions_py/` 脚本都能一键运行（shebang + bootstrap），它们继承 `brain/` 的知识，适合在项目根目录下直接调用。添加新脚本时，推荐把用法写进 `manual/usage_py.md`。
 
 ## 5. Bash helpers (`actions_bash/`)
 

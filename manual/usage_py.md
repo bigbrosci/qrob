@@ -2,6 +2,9 @@
 
 The `actions_py/` folder gathers the Python utilities that wrap the `brain/` knowledge into runnable tools. Each script is a portable CLI (shebang + bootstrap) so that once your `qrob` environment is activated and `~/bin/qrob/actions_py` is on `PATH`, you can run them directly (for example `get_incar.py dftd2 ispin`). Every script imports `actions_py.bootstrap.ensure_repo_root()` so it knows how to reach the shared `brain` modules regardless of the current directory.
 
+## 中文说明
+`actions_py/` 中的 Python 工具继承了 `brain/` 的模型与参数字典，通过 shebang + `ensure_repo_root()` 实现跨目录执行。激活 `qrob` 环境并将 `actions_py/` 目录加入 `PATH` 后，就能在任何含 VASP 文件的目录里通过脚本名称快速生成 INCAR、处理 POSCAR、提取磁矩等常见任务。
+
 ## Running the helpers
 
 1. Activate the `qrob` Conda environment (see `manual/qrob_env.yml`).
@@ -58,8 +61,14 @@ The `actions_py/` folder gathers the Python utilities that wrap the `brain/` kno
 - `get_mass_center.py` – calculate the center of mass from `POSCAR`/`CONTCAR`, optionally write a `DIPOL` line back into an `INCAR` file.
 - `zpe.py` – read `OUTCAR` frequencies via `brain.outcar.get_freq` and print the zero-point energy (ZPE) in eV.
 
+### 中文说明
+本节列出的脚本包含结构编辑（`translate.py` / `move_slab.py`）、参数生成（`get_incar.py`, `kp.py`）、物理分析（`get_bader.py`, `zpe.py`）等场景。若添加新工具，请在 `actions_py/` 新建脚本、使用 `ensure_repo_root()` 并同步更新本手册。
+
 ## Notes
 
 - Many scripts assume the standard VASP outputs (`POSCAR`, `OUTCAR`, `DOSCAR`, `CONTCAR`, `EIGENVAL`). Keep a backup before overwriting anything in place.
 - If you want to add a new helper, add the CLI under `actions_py/`, import `ensure_repo_root()`, and document the usage here so collaborators know where to look.
 - This manual replaces the former `actions_py/USAGE.md` and centralizes the documentation for both Python and Bash helpers (see `manual/bash_usage.md`).
+
+### 中文提示
+常见脚本依赖 `POSCAR`/`OUTCAR` 等 VASP 文件，新增工具时请保持与 `brain/` 数据一致，并在本手册留下说明，方便团队查阅。

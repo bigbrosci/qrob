@@ -2,6 +2,9 @@
 
 The `actions_bash/` folder collects quick shell wrappers for common VASP chores (convergence checks, log cleanup, and utility helpers) that complement the Python `actions_py/` scripts. Add `~/bin/qrob/actions_bash` to your `PATH` (see `manual/QRob.md`) so you can run these helpers from any job directory. Most of the scripts assume you are inside the job folder or have access to the standard VASP outputs (`OUTCAR`, `CONTCAR`, etc.).
 
+## 中文说明
+`actions_bash/` 提供的脚本都是纯 Bash 实现，适合在含有 VASP 输出的工作目录里直接执行，主要用于清理、检查、备份、提取磁矩/能量等常见操作。只需把目录加入 `PATH` 后就能按名字调用。
+
 ## Per-script usage
 
 ### `bader.sh`
@@ -77,3 +80,6 @@ The `actions_bash/` folder collects quick shell wrappers for common VASP chores 
 ## Tips
 - These scripts are most reliable when run from the same directory that contains the VASP outputs they read or modify.
 - Check `actions_bash/` directly if you need to tweak a script for your scheduler or naming conventions; they are intentionally simple so you can adapt them quickly.
+
+### 中文说明
+确保在包含 `OUTCAR`/`CONTCAR` 的目录下运行这些脚本，必要时根据你的作业系统调整脚本内容。本手册为集中式文档，其内容与 `manual/usage_py.md` 配合使用，可快速了解全部 Bash 与 Python 工具。
