@@ -178,10 +178,20 @@ function selectTask(taskName, buttonElement, categoryName) {
         selectedTasks.push(taskName);
     } else {
         // Multi-select for other buttons (Correction except vdW, Model, System, Tasks)
+        const isModelCategory = categoryName === 'Model';
         if (buttonElement.classList.contains('active')) {
             buttonElement.classList.remove('active');
             selectedTasks = selectedTasks.filter(task => task !== taskName);
         } else {
+            if (isModelCategory) {
+                const modelButtons = document.querySelectorAll('.task-btn[data-category="Model"]');
+                modelButtons.forEach(btn => {
+                    if (btn !== buttonElement && btn.classList.contains('active')) {
+                        btn.classList.remove('active');
+                        selectedTasks = selectedTasks.filter(task => task !== btn.textContent);
+                    }
+                });
+            }
             buttonElement.classList.add('active');
             selectedTasks.push(taskName);
             
