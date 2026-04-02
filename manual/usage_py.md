@@ -43,7 +43,7 @@ The `actions_py/` folder gathers the Python utilities that wrap the `brain/` kno
 
 ### Calculators & utilities
 
-- `get_incar.py` – wraps `brain.incar.build_incar`; pass keywords like `freq`, `dftd2`, `ispin`, `neb`, or run `get_incar.py --list` to see supported tasks.
+- `get_incar.py` – wraps `brain.incar.build_incar`; pass keywords like `freq`, `dftd2`, `ispin`, `neb`, or `--list` to see supported tasks. Running `get_incar.py` without arguments now launches the Flask GUI instead of printing an INCAR.
 - `get_abc.py` – reads `POSCAR`/`CONTCAR` and prints the lattice lengths, face areas, and volume.
 - `kp.py` – generates `KPOINTS` from `POSCAR` or hand-crafted meshes; run `kp.py` in a folder with `POSCAR` and let the default mesh (3×3×1) or existing file drive the output.
 - `pp.py` – build `POTCAR` fragments by reading the local `POSCAR`; just run `pp.py` and it will select the required potentials from `brain.potcar`.
