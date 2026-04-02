@@ -530,8 +530,6 @@ def launch_gui():
         print("   Run: pip install -r requirements.txt")
         sys.exit(1)
 
-    os.chdir(gui_dir)
-
     print("\n📋 Starting the application...")
     print(f"   - Server: http://{GUI_HOST}:{GUI_PORT}")
     print("   - Press Ctrl+C to stop\n")
