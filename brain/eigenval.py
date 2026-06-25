@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*-
 import sys, math 
 import numpy as np 
-from brain.kpoints import *
-from brain.vasprun import *
+try:
+    from .kpoints import *
+    from .vasprun import *
+except ImportError:
+    from brain.kpoints import *
+    from brain.vasprun import *
 
 
 def read_eigenval_pbe(data_file =  'EIGENVAL'): 
@@ -57,5 +61,4 @@ def write_band_energy(data_file =  'EIGENVAL'):
            f_out.write('%s ' %(k_i_band_j))
         f_out.write(' \n')
     f_out.close()        
-
 

@@ -11,8 +11,9 @@ from actions_py.bootstrap import ensure_repo_root
 ensure_repo_root()
 # -*- coding: utf-8 -*-
 '''Delete atoms from POSCAR using ASE'''
+from pathlib import Path
+
 from ase.io import read, write
-from ase import Atoms
 from brain.poscar import parse_atom_targets
 
 def get_atoms_to_delete(args, atoms, poscar_path):
@@ -33,8 +34,19 @@ def get_atoms_to_delete(args, atoms, poscar_path):
 
 def delete_atoms_and_save(file_in, atoms_to_delete, atoms):
     """
-    Delete the specified atoms and save the modified structure to a new file.
+    Delete the specified atoms and save the modified structure and deleted
+    atom coordinates to new files.
     """
+    deleted_indices = sorted(atoms_to_delete)
+
+    deleted_out = Path(file_in).with_name("atom_deleted")
+    with deleted_out.open("w", encoding="utf-8") as fh:
+        fh.write("# index symbol x y z (Cartesian coordinates in Angstrom)\n")
+        for idx in deleted_indices:
+            symbol = atoms[idx].symbol
+            x, y, z = atoms.positions[idx]
+            fh.write(f"{idx} {symbol} {x:.10f} {y:.10f} {z:.10f}\n")
+
     # Remove atoms from the Atoms object
     atoms = atoms[[i for i in range(len(atoms)) if i not in atoms_to_delete]]
 
@@ -42,13 +54,13 @@ def delete_atoms_and_save(file_in, atoms_to_delete, atoms):
     out_name = file_in.replace("POSCAR", "POSCAR_deleted")
     write(out_name, atoms)
 
-    print(f'\nThe output file is: {out_name}')
+    print(f'\nThe output files are: {out_name} and {deleted_out}')
 
 
 
 if len(sys.argv) < 3:
-    print('\nCommand Usage: delete.py POSCAR element_or_index1 element_or_index2 ...')
-    print('Example: delete.py POSCAR C H O 0 2 5')
+    print('\nCommand Usage: delete_atoms.py POSCAR element_or_index1 element_or_index2 ...')
+    print('Example: delete_atoms.py POSCAR C H O 0 2 5')
     print('This will delete all C, H, O atoms and the atoms with 0-based indices 0,2,5 from the POSCAR file')
     exit()
 

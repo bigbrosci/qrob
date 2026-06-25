@@ -9,7 +9,10 @@ import math
 import ase 
 from ase.io import read, write
 
-from data import atomic_mass, dict_element
+try:
+    from .data import atomic_mass, dict_element
+except ImportError:
+    from data import atomic_mass, dict_element
 
 #### Part-0 Dictionaries already imported from data.py
 dict_element_2 = {v: k for k, v in dict_element.items()}

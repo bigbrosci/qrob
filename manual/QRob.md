@@ -1,14 +1,14 @@
 # QRob Manual
 
-This document keeps the QRob overview, setup notes, and pointers aligned with the repository layout rooted at `~/bin/qrob`. Use it as the single place to learn how the toolkit is structured, how to activate it, and where to find the scripts, GUIs, and reference data now that the layout and naming have been refreshed.
+This document keeps the QRob overview, setup notes, and pointers aligned with the repository layout rooted at `~/bin/q-rob`. Use it as the single place to learn how the toolkit is structured, how to activate it, and where to find the scripts, GUIs, and reference data now that the layout and naming have been refreshed.
 
 ### 中文说明
-本文档保持与 `~/bin/qrob` 实际结构一致，提供项目组织、启动步骤、工具位置等信息，方便快速掌握 QRob 各个子模块及其用途。
+本文档保持与 `~/bin/q-rob` 实际结构一致，提供项目组织、启动步骤、工具位置等信息，方便快速掌握 QRob 各个子模块及其用途。
 
 ## 1. Goals and big picture
 
 - **What QRob does** – A VASP-focused helper robot: the `brain/` package encodes reusable parsers and parameter dictionaries, the `actions_py/` and `actions_bash/` folders expose concrete CLI helpers on top of that knowledge, and the `incar_gui/` / `geo_gui/` folders deliver lightweight web interfaces for composing inputs and editing structures.
-- **How it is organised** – Think of `qrob` as a single workspace. The `brain/` module contains the logic (INCAR/KPOINTS/POSCAR utilities and dictionaries) and the `actions_*` layers are the commands you run every day. The `books/` and `friends/` folders hold supplemental data and third-party scripts, while the GUIs live under their own directories with dedicated docs.
+- **How it is organised** – Think of `q-rob` as a single workspace. The `brain/` module contains the logic (INCAR/KPOINTS/POSCAR utilities and dictionaries) and the `actions_*` layers are the commands you run every day. The `books/` and `friends/` folders hold supplemental data and third-party scripts, while the GUIs live under their own directories with dedicated docs.
 - **Updates** – Add new parameters in `brain/`, extend CLI helpers in `actions_py/`, or drop new third-party helpers in `friends/`. Most customisations only need you to edit Python dictionaries or add a script, so you generally will not touch the old `Q_robot` naming anymore.
 
 ### 中文说明
@@ -33,12 +33,12 @@ QRob 就像一个专注 VASP 的机器人：`brain/` 封装参数与读写逻辑
 Add these lines to your shell startup file (`~/.bashrc`, `~/.zshrc`, `~/.profile`, etc.) so the commands, scripts, and modules are always available. Prepending your existing `PATH` keeps the system defaults first and avoids surprising overrides:
 
 ```bash
-export QROB_ROOT="$HOME/bin/qrob"
+export QROB_ROOT="$HOME/bin/q-rob"
 export PATH="$PATH:$QROB_ROOT/actions_py:$QROB_ROOT/actions_bash"
 export PYTHONPATH="$QROB_ROOT/brain${PYTHONPATH:+:$PYTHONPATH}"
 ```
 
-- Adjust `$HOME/bin/qrob` if you keep the repo elsewhere.
+- Adjust `$HOME/bin/q-rob` if you keep the repo elsewhere.
 - If you plan to run VTST scripts from `friends/vtstscripts-1040/`, append that directory to `PATH` as well (e.g., `export PATH="$QROB_ROOT/friends/vtstscripts-1040:$PATH"`).
 - Restart your shell or `source` the file to pick up the changes.
 

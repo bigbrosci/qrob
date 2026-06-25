@@ -34,8 +34,8 @@ ACTION_REGISTRY: Dict[str, ActionInfo] = {
         "dependencies": ["ase"],
         "brain_helpers": ["brain.poscar.parse_atom_targets"],
         "required_inputs": ["POSCAR"],
-        "outputs": ["POSCAR_deleted"],
-        "notes": "Uses ASE to read/write VASP structures.",
+        "outputs": ["POSCAR_deleted", "atom_deleted"],
+        "notes": "Writes the updated POSCAR plus a plain-text list of deleted atom indices, symbols, and Cartesian coordinates.",
     },
     "fix_by_atoms": {
         "script": BASE_DIR / "fix_by_atoms.py",

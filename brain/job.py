@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 # Write By Qiang on 27-02-2019
 from subprocess import Popen, PIPE
-from incar import *
 import os 
-from data import *
+try:
+    from .incar import *
+    from .data import *
+except ImportError:
+    from incar import *
+    from data import *
    
 ### Check Job status
 # 1) The job is finish or not? 
@@ -88,6 +92,7 @@ def get_id_slurm(user_id):
     list_j = [] # list for the job_ID
     process = Popen(['squeue', '-lu',  user_id], stdout=PIPE, stderr=PIPE)
     stdout, stderr = process.communicate()
+    stdout = stdout.decode(errors='ignore')
     list_out =  stdout.split('\n')[2:]
     for i in range(0, len(list_out)-1):
         list_j.append(list_out[i].split()[0])
@@ -98,6 +103,7 @@ def get_dir_slurm(job_id):
     command = 'scontrol show job ' + job_id 
     process1 = Popen(command, shell = True,  stdout=PIPE, stderr=PIPE)
     stdout1, stderr1 = process1.communicate()
+    stdout1 = stdout1.decode(errors='ignore')
     for i in stdout1.split('\n'):
         if 'WorkDir' in i: 
             #job_dir.append(i.split('=')[1])
@@ -109,6 +115,7 @@ def get_id_qstat(user_id):
     command = 'qstat -u ' + user_id
     process = Popen(command, shell = True, stdout=PIPE, stderr=PIPE)
     stdout, stderr = process.communicate()
+    stdout = stdout.decode(errors='ignore')
     list_out =  stdout.split('\n')[2:]
     for i in range(0, len(list_out)-1):
         list_j.append(list_out[i].split()[0])
@@ -119,6 +126,7 @@ def get_dir_qstat(job_id):
     command = 'qstat -j ' + job_id 
     process1 = Popen(command, shell = True,  stdout=PIPE, stderr=PIPE)
     stdout1, stderr1 = process1.communicate()
+    stdout1 = stdout1.decode(errors='ignore')
     for i in stdout1.split('\n'):
         if 'workdir' in i: 
             #job_dir.append(i.split('=')[1])
@@ -127,11 +135,12 @@ def get_dir_qstat(job_id):
 
 def update_record():
     list_user_tekla = list_id_nl_tekla
-    list_user_bsc = dict_id_nl_bsc.values()
+    list_user_bsc = list(dict_id_nl_bsc.values())
     list_user_bsc.append('qiangli')
     list_user_bsc.append('iciq41406') # my user name in La Palma 
     user_id = os.path.expanduser('~').split('/')[-1]    
     list_j = None
+    report = None
     if user_id  in list_user_tekla:        
         list_j = get_id_qstat(user_id)
         get_dir = get_dir_qstat
@@ -140,6 +149,11 @@ def update_record():
         list_j = get_id_slurm(user_id)
         get_dir = get_dir_slurm
         report = '/home/iciq72/' + user_id  + '/bin/Q_robot/reports/job_list.txt'
+    else:
+        return {}
+    if list_j is None:
+        return {}
+    os.makedirs(os.path.dirname(report), exist_ok=True)
     with open(report, 'a+') as file_in:
         id_dict = {}
         lines = file_in.readlines()

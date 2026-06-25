@@ -19,8 +19,8 @@ The `actions_bash/` folder collects quick shell wrappers for common VASP chores 
 
 ### `check_converge.sh`
 - **Purpose:** Inspect `OUTCAR` to flag convergence (ionic/electronic) issues and log successes/failures.
-- **Usage:** `check_converge.sh OUTCAR`
-- **Details:** Prints NSW/NELM/last-iteration info, appends summaries to `check_results.out`, and writes “good” or “bad” job names to `list_good.txt` or `list_bad.txt` respectively.
+- **Usage:** `check_converge.sh OUTCAR_or_calc_dir`
+- **Details:** Accepts either an `OUTCAR` path or a calculation directory, distinguishes single-point vs relaxation jobs, appends summaries to `check_results.out`, and writes job names to `list_good.txt`, `list_bad.txt`, `list_rerun.txt`, and `list_scratch.txt`.
 
 ### `clean_deep.sh`
 - **Purpose:** Aggressively delete temporary VASP files and outputs when you need to reclaim disk space.
@@ -70,7 +70,7 @@ The `actions_bash/` folder collects quick shell wrappers for common VASP chores 
 ### `ta.sh`
 - **Purpose:** List job directories alongside their final energy (the “without” energy extracted from `OUTCAR`).
 - **Usage:** `ta.sh`
-- **Details:** Iterates over subdirectories, prints `<job>,<energy>` for each job that contains an `OUTCAR`.
+- **Details:** Iterates over subdirectories, prints one tab-separated `<job> <energy>` line for each folder that contains an `OUTCAR`.
 
 ### `zpe.sh`
 - **Purpose:** Estimate the zero-point energy correction from `OUTCAR` vibrational frequencies.

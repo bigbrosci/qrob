@@ -18,7 +18,7 @@ the QROB workflow.
 ### Run the Application
 
 ```bash
-streamlit run qrob/geo_gui/geo_gui.py
+streamlit run q-rob/geo_gui/geo_gui.py
 ```
 
 ### Basic Workflow
@@ -48,7 +48,7 @@ See `docs/` directory for complete documentation.
 ## File Structure
 
 ```
-qrob/geo_gui/
+q-rob/geo_gui/
 ├── geo_gui.py                    # Main application (1047 lines)
 ├── README.md                   # This file
 └── docs/                       # Documentation
@@ -87,7 +87,7 @@ source .venv/bin/activate
 pip install streamlit py3Dmol numpy
 
 # Run the viewer
-streamlit run qrob/geo_gui/geo_gui.py
+streamlit run q-rob/geo_gui/geo_gui.py
 ```
 
 ## Usage Examples

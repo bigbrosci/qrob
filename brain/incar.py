@@ -8,7 +8,10 @@ import os
 import sys
 from difflib import SequenceMatcher
 
-from data import j_value, mag_value, u_value
+try:
+    from .data import j_value, mag_value, u_value
+except ImportError:
+    from data import j_value, mag_value, u_value
 
 try:
     from ase.io import read

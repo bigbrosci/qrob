@@ -9,6 +9,9 @@ let currentParams = {};
 document.addEventListener('DOMContentLoaded', function() {
     initializeTaskCategories();
     loadStandardParameters();
+    attachCustomParamListeners();
+    refreshWorkspaceStatus();
+    updateSelectionSummary();
 });
 
 /**
@@ -91,6 +94,7 @@ function initializeTaskCategories() {
         
         // Load default task parameters
         loadTaskParameters(selectedTasks);
+        updateSelectionSummary();
     })
     .catch(error => console.error('Error loading task categories:', error));
 }
@@ -113,6 +117,7 @@ function clearCategory(categoryName) {
     
     // Clear task parameters display
     document.getElementById('taskParams').innerHTML = '<p class="info-text">Select tasks to see their parameters</p>';
+    updateSelectionSummary();
 }
 
 /**
@@ -248,6 +253,7 @@ function selectTask(taskName, buttonElement, categoryName) {
     
     // Load task parameters for all selected tasks
     loadTaskParameters(selectedTasks);
+    updateSelectionSummary();
 }
 
 /**
@@ -326,6 +332,7 @@ function loadTaskParameters(taskNames) {
     if (!taskNames || taskNames.length === 0) {
         taskParamsDiv.innerHTML = '<p class="info-text">Select tasks to see their parameters</p>';
         currentParams = {};
+        updateSelectionSummary();
         return;
     }
     
@@ -350,6 +357,7 @@ function loadTaskParameters(taskNames) {
             if (loadedCount === taskNames.length) {
                 displayTaskParams(allParams);
                 currentParams = allParams;
+                updateSelectionSummary();
             }
         })
         .catch(error => {
@@ -358,6 +366,7 @@ function loadTaskParameters(taskNames) {
             if (loadedCount === taskNames.length) {
                 displayTaskParams(allParams);
                 currentParams = allParams;
+                updateSelectionSummary();
             }
         });
     });
@@ -509,6 +518,8 @@ function addCustomParam() {
         <button class="btn-remove" onclick="removeCustomParam(this)">✕</button>
     `;
     container.appendChild(newRow);
+    attachCustomParamListeners();
+    updateSelectionSummary();
 }
 
 /**
@@ -516,6 +527,7 @@ function addCustomParam() {
  */
 function removeCustomParam(button) {
     button.closest('.param-input-row').remove();
+    updateSelectionSummary();
 }
 
 /**
@@ -597,14 +609,15 @@ function generateINCAR() {
         .then(data => {
             console.log('Response data:', data);
             displayINCAR(data);
+            setStatusBanner('INCAR generated successfully. You can edit the preview before downloading.', 'success');
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error generating INCAR: ' + error.message);
+            setStatusBanner('Error generating INCAR: ' + error.message, 'error');
         });
     } catch (error) {
         console.error('Exception in generateINCAR:', error);
-        alert('Exception: ' + error.message);
+        setStatusBanner('Exception: ' + error.message, 'error');
     }
 }
 
@@ -623,6 +636,7 @@ function displayINCAR(data) {
         preview.value = 'Error: ' + data.error;
         stats.innerHTML = '<strong style="color: red;">Error generating INCAR</strong>';
         downloadBtn.disabled = true;
+        setStatusBanner('Backend returned an error while generating the INCAR.', 'error');
         return;
     }
     
@@ -631,6 +645,7 @@ function displayINCAR(data) {
         preview.value = 'Error: No INCAR content generated';
         stats.innerHTML = '<strong style="color: red;">Error: Empty response</strong>';
         downloadBtn.disabled = true;
+        setStatusBanner('The server returned an empty INCAR response.', 'error');
         return;
     }
     
@@ -651,7 +666,7 @@ function displayINCAR(data) {
 function downloadINCAR() {
     let preview = document.getElementById("incarPreview");
     if (!preview.value) {
-        alert('Please generate INCAR first');
+        setStatusBanner('Generate an INCAR preview before downloading.', 'warning');
         return;
     }
     
@@ -675,10 +690,11 @@ function downloadINCAR() {
         link.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(link);
+        setStatusBanner('INCAR file downloaded.', 'success');
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error downloading file');
+        setStatusBanner('Error downloading file.', 'error');
     });
 }
 
@@ -688,15 +704,15 @@ function downloadINCAR() {
 function copyToClipboard() {
     let preview = document.getElementById("incarPreview");
     if (!preview.value) {
-        alert("Please generate INCAR first!");
+        setStatusBanner('Generate an INCAR preview before copying.', 'warning');
         return;
     }
     navigator.clipboard.writeText(preview.value).then(() => {
-        alert('INCAR copied to clipboard!');
+        setStatusBanner('INCAR copied to clipboard.', 'success');
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error copying to clipboard');
+        setStatusBanner('Error copying to clipboard.', 'error');
     });
 }
 
@@ -739,4 +755,97 @@ function resetForm() {
     document.getElementById('downloadBtn').disabled = true;
     
     currentParams = {};
+    window.dftuParams = null;
+    window.magmomValue = null;
+    window.nebImages = null;
+    setStatusBanner('Form reset. Default helper context will be reloaded.', 'warning');
+    refreshWorkspaceStatus();
+    updateSelectionSummary();
+}
+
+function updateSelectionSummary() {
+    const selectedTaskCount = document.getElementById('selectedTaskCount');
+    const selectedSectionCount = document.getElementById('selectedSectionCount');
+    const customParamCount = document.getElementById('customParamCount');
+    const selectionSummary = document.getElementById('selectionSummary');
+
+    const checkedSections = Array.from(document.querySelectorAll('.param-section input[type="checkbox"]'))
+        .filter((checkbox) => checkbox.checked).length;
+
+    const customCount = Array.from(document.querySelectorAll('.param-input-row'))
+        .map((row) => {
+            const key = row.querySelector('.param-key')?.value.trim();
+            const value = row.querySelector('.param-value')?.value.trim();
+            return key && value ? 1 : 0;
+        })
+        .reduce((sum, value) => sum + value, 0);
+
+    selectedTaskCount.textContent = selectedTasks.length;
+    selectedSectionCount.textContent = checkedSections;
+    customParamCount.textContent = customCount;
+
+    if (selectedTasks.length === 0) {
+        selectionSummary.innerHTML = '<p class="info-text">No task buttons selected yet.</p>';
+        return;
+    }
+
+    const chips = selectedTasks
+        .slice()
+        .sort((a, b) => a.localeCompare(b))
+        .map((task) => `<span class="task-chip">${task}</span>`)
+        .join('');
+
+    selectionSummary.innerHTML = `<div class="task-chip-list">${chips}</div>`;
+}
+
+function setStatusBanner(message, level = '') {
+    const banner = document.getElementById('statusBanner');
+    banner.textContent = message;
+    banner.className = 'status-banner';
+    if (level) {
+        banner.classList.add(level);
+    }
+}
+
+function refreshWorkspaceStatus() {
+    fetch('/api/read-poscar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then((response) => response.json())
+    .then((data) => {
+        const poscarSummary = document.getElementById('poscarSummary');
+        if (data.success) {
+            const formulas = Object.entries(data.element_counts)
+                .map(([element, count]) => `${element}${count}`)
+                .join(' ');
+            poscarSummary.textContent = `${data.total_atoms} atoms`;
+            setStatusBanner(`POSCAR detected: ${formulas}`, 'success');
+        } else {
+            poscarSummary.textContent = 'Not found';
+            setStatusBanner('No POSCAR detected nearby. Auto-calculated DFT+U, MAGMOM, and NEB helpers may be unavailable.', 'warning');
+        }
+    })
+    .catch(() => {
+        document.getElementById('poscarSummary').textContent = 'Unknown';
+        setStatusBanner('Could not determine local POSCAR status.', 'warning');
+    });
+}
+
+function attachCustomParamListeners() {
+    document.querySelectorAll('.param-key, .param-value').forEach((input) => {
+        if (input.dataset.summaryBound === 'true') {
+            return;
+        }
+        input.dataset.summaryBound = 'true';
+        input.addEventListener('input', updateSelectionSummary);
+    });
+
+    document.querySelectorAll('.param-section input[type="checkbox"]').forEach((checkbox) => {
+        if (checkbox.dataset.summaryBound === 'true') {
+            return;
+        }
+        checkbox.dataset.summaryBound = 'true';
+        checkbox.addEventListener('change', updateSelectionSummary);
+    });
 }

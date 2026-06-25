@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import os, sys
-import csv 
+import re
+from pathlib import Path
+
+try:
+    from .data import ja as BUILTIN_JA
+except ImportError:
+    from data import ja as BUILTIN_JA
 
 ###### To get the abbriveation of the Journals ###############
 def rule_one(journal_name):
@@ -17,12 +22,15 @@ def rule_one(journal_name):
     return journal_name
 
 def load_ja():
-    '''my_ja_dict.txt is the dictionary contains the abbreviations for the common journals '''
-    dict_file = '/home/robot/bin/Q_robot/books/books_have_read/my_ja_dict.txt'
-    f = open(dict_file, 'r')
-    ja_dict = f.read()
-    f.close()
-    return eval(ja_dict)
+    '''Load journal abbreviations from a local dictionary file or fall back to built-ins.'''
+    candidates = [
+        Path('/home/robot/bin/Q_robot/books/books_have_read/my_ja_dict.txt'),
+        Path(__file__).resolve().parent / 'my_ja_dict.txt',
+    ]
+    for dict_file in candidates:
+        if dict_file.exists():
+            return eval(dict_file.read_text())
+    return BUILTIN_JA
 
 def get_abb(journal):
     '''Get the abbreviation from the dictionary ja'''
@@ -105,7 +113,10 @@ def change_field(dict_bib, field, field_infor):
 
 def journal_analyzer(dict_bib):
     '''Check the Abbreviation of the Journal in the bib dictionary'''
+    ja = load_ja()
     journal = dict_bib.get('journal')
+    if not journal:
+        return dict_bib
     journal = journal.replace('&', 'and')
     journal = ' '.join(re.findall(r"[\w']+", journal)).lower()
         
@@ -117,7 +128,7 @@ def journal_analyzer(dict_bib):
     return dict_bib    
 
 def format_one_bib(one_bib):
-   '''format the bib file in a good manner ''' 
+    '''format the bib file in a good manner '''
     dict_bib = readbib(one_bib)
     if dict_bib.get('entry') == 'article':      
         dict_bib = journal_analyzer(dict_bib)

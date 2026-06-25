@@ -9,8 +9,14 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>🤖 Q-robot INCAR Generator</h1>
-            <p class="subtitle">Create VASP INCAR files with an intuitive interface</p>
+            <div class="header-badge">Q-rob Workflow Tool</div>
+            <h1>Q-robot INCAR Generator</h1>
+            <p class="subtitle">Compose VASP INCAR files from presets, standard sections, and custom overrides.</p>
+            <div class="header-meta">
+                <span>Flask UI</span>
+                <span>POSCAR-aware helpers</span>
+                <span>Editable preview</span>
+            </div>
         </header>
 
         <div class="content-wrapper">
@@ -55,29 +61,55 @@
             <!-- Right Panel: Preview and Actions -->
             <div class="panel panel-right">
                 <section class="section">
-                    <h2>👀 INCAR Preview</h2>
+                    <h2>Overview</h2>
+                    <div class="overview-grid">
+                        <div class="overview-card">
+                            <span class="overview-label">Selected Buttons</span>
+                            <strong class="overview-value" id="selectedTaskCount">0</strong>
+                        </div>
+                        <div class="overview-card">
+                            <span class="overview-label">Standard Sections</span>
+                            <strong class="overview-value" id="selectedSectionCount">0</strong>
+                        </div>
+                        <div class="overview-card">
+                            <span class="overview-label">Custom Params</span>
+                            <strong class="overview-value" id="customParamCount">0</strong>
+                        </div>
+                        <div class="overview-card">
+                            <span class="overview-label">POSCAR Context</span>
+                            <strong class="overview-value" id="poscarSummary">Checking...</strong>
+                        </div>
+                    </div>
+                    <div class="selection-summary" id="selectionSummary">
+                        <p class="info-text">No task buttons selected yet.</p>
+                    </div>
+                    <div class="status-banner" id="statusBanner">Ready.</div>
+                </section>
+
+                <section class="section">
+                    <h2>INCAR Preview</h2>
                     <textarea id="incarPreview" class="incar-preview" placeholder="# INCAR preview will appear here. You can edit it before saving!"></textarea>
                     <div class="preview-stats" id="previewStats"></div>
                 </section>
 
                 <section class="section">
-                    <h2>💾 Generate & Save & Export</h2>
+                    <h2>Generate & Export</h2>
                     <div class="action-buttons">
                         <button class="btn-primary" onclick="generateINCAR()">Generate INCAR</button>
                         <button class="btn-success" onclick="downloadINCAR()" id="downloadBtn" disabled>
-                            💾 Download INCAR File
+                            Download INCAR
                         </button>
                         <button class="btn-secondary" onclick="copyToClipboard()">
-                            📋 Copy to Clipboard
+                            Copy to Clipboard
                         </button>
                         <button class="btn-secondary" onclick="resetForm()">
-                            🔄 Reset Form
+                            Reset Form
                         </button>
                     </div>
                 </section>
 
                 <section class="section">
-                    <h2>ℹ️ Information</h2>
+                    <h2>Information</h2>
                     <div class="info-wrapper info-grid-4">
                         <!-- 1. About this tool -->
                         <div class="info-box">

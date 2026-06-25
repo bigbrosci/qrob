@@ -1,59 +1,51 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import os 
+from pathlib import Path
 
-if not os.path.isfile('vasprun.xml'):
-    print('Error: No vasprun_xml file found!')
-    exit()
 
-f_in = open('vasprun.xml', 'r')
-lines_vasprun = f_in.readlines()
-f_in.close()
+LOOK_VERSION = 'name="version"'
+LOOK_NEDOS = 'NEDOS'
+LOOK_FERMI = 'efermi'
+LOOK_KPOINTS = 'kpoints>'
 
-look_version    = 'name="version"'
-look_incar      = 'incar>'
-look_parameter  = 'parameters>'
-look_atominfor  = 'atominfo>'
-look_structure  = 'structure'
-look_nedos      = 'NEDOS'
-look_fermi      = 'efermi'
-look_kpoints    = 'kpoints>'
 
-line_version    = []
-line_incar      = []
-line_parameter  = []
-line_atominfor  = []
-line_structure  = []
-line_nedos      = []
-line_fermi      = []
-line_kpoints    = []
-#########################################3
-look_list = [look_nedos, look_fermi]
-line_list = [line_nedos, line_fermi]
+def _load_vasprun(path='vasprun.xml'):
+    vasprun = Path(path)
+    if not vasprun.is_file():
+        raise FileNotFoundError(f'No vasprun.xml file found at {vasprun}')
 
-dict_line = dict(zip(look_list, line_list))
-### Get all the line numbers for by using the key words in the look_list
-for num, line in enumerate(lines_vasprun):
-    for k, v in dict_line.items():
-        if k in line: 
-            v.append(num)
+    lines = vasprun.read_text().splitlines()
+    dict_line = {
+        LOOK_VERSION: [],
+        LOOK_NEDOS: [],
+        LOOK_FERMI: [],
+        LOOK_KPOINTS: [],
+    }
+    for num, line in enumerate(lines):
+        for key, bucket in dict_line.items():
+            if key in line:
+                bucket.append(num)
+    return lines, dict_line
 
-#########################################            
-def get_version():
-    line_num_version = dict_line.get(look_version)[-1]
-    version          = lines_vasprun[line_num_version].split()[2].split('>')[1]
-    return version
 
-def get_nedos():
-    line_num_dos = dict_line.get(look_nedos)[-1]
-    nedos        = lines_vasprun[line_num_dos].split()[3].split('<')[0]   # line.strip().split()[3][:-4]
-    return nedos
+def get_version(path='vasprun.xml'):
+    lines_vasprun, dict_line = _load_vasprun(path)
+    line_num_version = dict_line[LOOK_VERSION][-1]
+    return lines_vasprun[line_num_version].split()[2].split('>')[1]
 
-def get_fermi():
-    line_num_fermi  = dict_line.get(look_fermi)[-1]
-    e_fermi     =  lines_vasprun[line_num_fermi].split()[2]
-    return float(e_fermi)
 
-def get_kpoints():
-    line_kpoints_start,line_kpoints_end = dict_line.get(look_kpoints)
-    
+def get_nedos(path='vasprun.xml'):
+    lines_vasprun, dict_line = _load_vasprun(path)
+    line_num_dos = dict_line[LOOK_NEDOS][-1]
+    return lines_vasprun[line_num_dos].split()[3].split('<')[0]
+
+
+def get_fermi(path='vasprun.xml'):
+    lines_vasprun, dict_line = _load_vasprun(path)
+    line_num_fermi = dict_line[LOOK_FERMI][-1]
+    return float(lines_vasprun[line_num_fermi].split()[2])
+
+
+def get_kpoints(path='vasprun.xml'):
+    _, dict_line = _load_vasprun(path)
+    return dict_line[LOOK_KPOINTS]
