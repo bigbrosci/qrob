@@ -1,0 +1,8 @@
+export ROBOT="$HOME/bin/q-rob"
+
+for d in "$ROBOT"/actions_*(N); do
+    PATH="$PATH:$d"
+done
+
+export PATH="$PATH:$ROBOT/friends/vtstscripts-1040"
+export PYTHONPATH="$PYTHONPATH:$ROBOT/brain"
