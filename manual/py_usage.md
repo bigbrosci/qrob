@@ -53,9 +53,11 @@ The `actions_py/` folder gathers the Python utilities that wrap the `brain/` kno
 ### Calculators & utilities
 
 - `get_incar.py` – unified INCAR entrypoint. Pass keywords like `freq`, `dftd2`, `ispin`, `neb`, or `--list` to build an `INCAR`; run it without arguments to launch the Flask GUI.
+- `check_converge.py` – inspect an `OUTCAR` or calculation directory, classify the job as converged or not, and append the result to `check_results.out`, `list_good.txt`, `list_bad.txt`, `list_rerun.txt`, and `list_scratch.txt`.
 - `get_abc.py` – reads `POSCAR`/`CONTCAR` and prints the lattice lengths, face areas, and volume.
 - `kp.py` – generates `KPOINTS` from `POSCAR` or hand-crafted meshes; run `kp.py` in a folder with `POSCAR` and let the default mesh (3×3×1) or existing file drive the output.
 - `pp.py` – build `POTCAR` fragments by reading the local `POSCAR`; just run `pp.py` and it will select the required potentials from `brain.potcar`.
+- `ncore.py` – add or update `NCORE` in `INCAR` for non-frequency jobs. Run `ncore.py` to add `NCORE = 8` when missing, or `ncore.py 16` to set a custom value.
 - `plot_dft.py` – lightweight front-end for shared DFT plotting helpers. Use `plot_dft.py --type linear -i data.csv` for linear regressions or `plot_dft.py --type neb --name JOBNAME` to visualize NEB energies. It supports `--dirs` to specify subdirectories.
 - `vtotav.py` – average a LOCPOT/CHGCAR file along a direction to produce one-dimensional curves; call `vtotav.py LOCPOT z`.
 - `dos_extract.py` – sum DOS for selected atoms/orbitals by reading `DOSCAR` and `POSCAR`; usage `dos_extract.py C s DOS_out.dat` (select atoms and output file name).
@@ -140,7 +142,8 @@ The local merge adds a larger legacy toolbox into `actions_py/`. Many of these s
 
 ### Electronic-structure setup
 
-- `convert_xml_to_ml_ab_input.py` – turn `vasprun.xml`-style outputs into machine-learning adsorption/binding input tables.
+- `xml2mlab.py` – convert one or more `vasprun.xml` files into an `ML_AB`-style training dataset for VASP on-the-fly machine learning.
+- `mlab_merge.py` – merge one or more existing `ML_AB` files into a single combined dataset.
 - `hseband.py` – prepare inputs for HSE band-structure calculations.
 - `hsekpoints.py` – generate HSE-friendly `KPOINTS`.
 - `id_to_cif.py` – fetch or convert a material identifier into a CIF file.
