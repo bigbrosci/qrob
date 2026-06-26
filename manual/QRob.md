@@ -60,9 +60,9 @@ export PYTHONPATH="$QROB_ROOT/brain${PYTHONPATH:+:$PYTHONPATH}"
   - `kp.py` – generate KPOINTS files (line, mesh, etc.) from a POSCAR or arguments.
   - `pp.py` – create POTCAR snippets from your inputs.
   - `cssm.py`, `dcenter.py`, `dos_extract.py`, `vtotav.py` – helper calculators for surfaces, DOS, or work functions.
-  - `get_bader.py`, `get_mag.py`, `get_bandgap.py`, `zpe.py`, `freq_correction.py` – analysis utilities that read VASP outputs.
+  - `get_bader.py`, `get_mag.py`, `get_bandgap.py`, `zpe.py`, `frequency_correction.py` – analysis utilities that read VASP outputs.
   - `bootstrap.py` – ensures the repo root is in `sys.path` so other scripts can import `brain` (run automatically).
-- `actions_bash/` – bash shortcuts that wrap common workflows such as cleaning directories (`clean_light.sh`, `clean_deep.sh`), collecting job metadata (`check_converge.sh`, `get_mag.sh`, `liste.sh`), and submitting or cleaning batches (`bader.sh`, `save_calculations.sh`, etc.). These scripts assume the same `PATH` additions as above.
+- `actions_bash/` – bash shortcuts that wrap common workflows such as cleaning directories (`rmall.sh`), collecting job metadata (`check_converge.sh`, `get_mag.sh`, `liste.sh`), and submitting or cleaning batches (`bader.sh`, `save_calculations.sh`, etc.). These scripts assume the same `PATH` additions as above.
 - `books/` – domain knowledge: pseudopotential tables, DFT-D2 parameters, lattice references, and sample structures under `books/structures/`. The `brain/data.py` module imports/extends this raw information.
 - `friends/` – third-party helpers we borrow when the work is already done (ASE helpers, VTST utilities, VASPKIT, etc.). Unpack the tarballs if needed and add the extracted `vtstscripts-1040/` (or whichever version you use) to your `PATH` before invoking those helpers.
 - `incar_gui/` – Flask-based INCAR generator with its own docs and requirements. See `incar_gui/INTRODUCTION.md` for bootstrapping and `task_config.json` for how the UI maps to `brain/incar` task dictionaries.
@@ -79,8 +79,8 @@ export PYTHONPATH="$QROB_ROOT/brain${PYTHONPATH:+:$PYTHONPATH}"
   1. `get_incar.py` – generate an INCAR; pass keywords like `freq`, `dftd2`, `ispin`, `neb`, `single`, `pbe0`, etc. Use `--list` to inspect supported tasks.
   2. `kp.py` – produce KPOINTS meshes or line-mode k-paths from a POSCAR or command-line arguments.
   3. `pp.py` – build POTCAR fragments for single or mixed-element jobs.
-  4. `cssm.py`, `fix_by_layer.py`, `translate.py`, `rotate.py`, etc. – operate on POSCAR files when preparing slabs or defects.
-- Refer to `actions_py/USAGE.md` for friendly usage notes for each script, especially `reformat.py` and `sort_atoms_by_ele.py` (the short README there also explains how to add future entries).
+  4. `cssm.py`, `fix_atoms.py`, `translate.py`, `rotate.py`, etc. – operate on POSCAR files when preparing slabs or defects.
+- Refer to `actions_py/USAGE.md` for friendly usage notes for each script, especially `reformat.py` and `sort_atoms.py` (the short README there also explains how to add future entries).
 
 ### 中文说明
 `actions_py/` 脚本都能一键运行（shebang + bootstrap），它们继承 `brain/` 的知识，适合在项目根目录下直接调用。添加新脚本时，推荐把用法写进 `manual/usage_py.md`。
@@ -90,8 +90,8 @@ export PYTHONPATH="$QROB_ROOT/brain${PYTHONPATH:+:$PYTHONPATH}"
 - These scripts target frequent operations that involve job directories or scheduler metadata.
 - Examples:
   - `check_converge.sh $JOBDIR` – scan the log for convergence warnings.
-  - `liste.sh` – show running or queued jobs with extra context.
-  - `clean_light.sh` / `clean_deep.sh` – remove temporary VASP outputs while keeping inputs.
+  - `liste.sh` – show job energies from a `list` file, or fall back to scanning subdirectories when `list` is missing.
+  - `rmall.sh light` / `rmall.sh deep` – remove temporary VASP outputs with lighter or deeper cleanup modes.
   - `zpe.sh`, `bader.sh` – wrap ASE/VTST tools for specific property calculations.
 - You can call them directly after exporting the `actions_bash/` directory into your `PATH`.
 - Open the scripts to understand the scheduler/environment assumptions before using them on a supercomputer.

@@ -41,23 +41,29 @@ reformat.py POSCAR
 Notes
 
 
-## sort_atoms_by_ele.py
+## sort_atoms.py
 
 Purpose
 
 Usage
 ```
-sort_atoms_by_ele.py FILE [ELE1 ELE2 ...]
+sort_atoms.py -i FILE --mode element [--elements ELE1 ELE2 ...]
 ```
 
 
 Examples
 ```
-sort_atoms_by_ele.py POSCAR
+sort_atoms.py -i POSCAR --mode element
 # writes POSCAR_sorted with atoms grouped alphabetically
 
-sort_atoms_by_ele.py POSCAR Fe C H O
+sort_atoms.py -i POSCAR --mode element --elements Fe C H O
 # writes POSCAR_sorted with Fe first, then C, then H, then O, then others
+
+sort_atoms.py -i POSCAR --mode z
+# writes POSCAR_sorted with all atoms sorted by Cartesian z
+
+sort_atoms.py -i POSCAR --mode z-within-element --elements Ni C H O
+# writes POSCAR_sorted with Ni/C/H/O groups and each group sorted by z
 ```
 
 Output

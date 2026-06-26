@@ -22,16 +22,6 @@ The `actions_bash/` folder collects quick shell wrappers for common VASP chores 
 - **Usage:** `check_converge.sh OUTCAR_or_calc_dir`
 - **Details:** Accepts either an `OUTCAR` path or a calculation directory, distinguishes single-point vs relaxation jobs, appends summaries to `check_results.out`, and writes job names to `list_good.txt`, `list_bad.txt`, `list_rerun.txt`, and `list_scratch.txt`.
 
-### `clean_deep.sh`
-- **Purpose:** Aggressively delete temporary VASP files and outputs when you need to reclaim disk space.
-- **Usage:** Run from a job directory: `clean_deep.sh`
-- **Details:** Removes charge/wavefunction files, logs, DOS/PROCAR data, `POTCAR`, `IB*`, and similar artifacts below the current directory (using `find`).
-
-### `clean_light.sh`
-- **Purpose:** Less aggressive clean of logs, kpoints, and temporary VASP outputs while keeping core inputs.
-- **Usage:** `clean_light.sh`
-- **Details:** Deletes `.log`, `e.*`, `o.*`, `REPORT*`, `PCDAT*`, etc., but leaves structural inputs like `CONTCAR`, `POSCAR`, and `INCAR` untouched.
-
 ### `ej.sh`
 - **Purpose:** Enter the working directory of a Slurm job (uses `scontrol`).
 - **Usage:** `ej.sh <job-id>`
@@ -45,32 +35,27 @@ The `actions_bash/` folder collects quick shell wrappers for common VASP chores 
 ### `get_ts.sh`
 - **Purpose:** Pick a transition-state image from multiple NEB directories for follow-up frequency calculations.
 - **Usage:** `get_ts.sh`
-- **Details:** Calls `ta.sh`, sorts results, and prints the job name reported by the VTST helper.
+- **Details:** Calls `liste.sh`, sorts the reported energies, and prints the job name reported by the VTST helper.
 
 ### `liste.sh`
-- **Purpose:** Display the most recent energy listed in each directory mentioned in a `list` file.
+- **Purpose:** Display the most recent energy for jobs in `list`, or scan subdirectories when `list` is absent.
 - **Usage:** `liste.sh`
-- **Details:** Reads job names from `list`, looks for `OUTCAR`, and prints the “without” energy line for each job; useful for tracking progress across a sweep.
+- **Details:** If a `list` file exists, it reads job names from there; otherwise it falls back to scanning subdirectories like the old `ta.sh`. It prints one tab-separated `<job> <energy>` line per matching `OUTCAR`.
 
 ### `ncore.sh`
-- **Purpose:** Update the `NCORE` setting in `INCAR` while respecting VASP restrictions.
-- **Usage:** `ncore.sh <num-cores>`
-- **Details:** Removes `NCORE` if `IBRION` is 5–8 (unsupported) and otherwise replaces/sets `NCORE = <num>` with a backup file `INCAR.bak`.
+- **Purpose:** Add or update `NCORE` in `INCAR` for non-frequency jobs.
+- **Usage:** `ncore.sh [num-cores]`
+- **Details:** Reads `INCAR` directly. If `IBRION` is 5–8, it makes no change. Otherwise it adds `NCORE = 8` when no `NCORE` line exists, or uses the provided argument value when you run `ncore.sh 16`.
 
 ### `rmall.sh`
-- **Purpose:** Remove a standard collection of auxiliary VASP files quickly.
-- **Usage:** `rmall.sh`
-- **Details:** Uses a single `find` command to delete `CHG*`, `WAVE*`, `AE*`, `err.*`, `out.*`, `REPORT*`, `PCDAT*`, and similar temporary files.
+- **Purpose:** Unified cleanup helper for light or deep VASP file removal.
+- **Usage:** `rmall.sh [light|deep] [--dry-run]`
+- **Details:** `light` removes logs and common temporary outputs; `deep` removes everything from `light` plus large charge/wavefunction files such as `CHG*`, `WAVE*`, `AE*`, `DOS*`, and `PRO*`. Use `--dry-run` to preview matches before deletion.
 
 ### `save_calculations.sh`
 - **Purpose:** Archive the main output files by appending a suffix, keeping the current run’s data intact.
 - **Usage:** `save_calculations.sh [tag]`
 - **Details:** Moves `CONTCAR`, `POSCAR`, `OUTCAR`, `DOSCAR`, `XDATCAR`, `OSZICAR`, and `vasprun.xml` to versions with the tag (or an auto-incremented number) and copies the tagged `CONTCAR` back to `POSCAR`.
-
-### `ta.sh`
-- **Purpose:** List job directories alongside their final energy (the “without” energy extracted from `OUTCAR`).
-- **Usage:** `ta.sh`
-- **Details:** Iterates over subdirectories, prints one tab-separated `<job> <energy>` line for each folder that contains an `OUTCAR`.
 
 ### `zpe.sh`
 - **Purpose:** Estimate the zero-point energy correction from `OUTCAR` vibrational frequencies.

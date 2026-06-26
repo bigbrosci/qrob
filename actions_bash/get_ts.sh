@@ -6,4 +6,4 @@
 #cp $ts ../../2_freq/$i; 
 #cd -
 #done
-ta.sh |sort -k 2 |head -n 1 |awk '{print $1}'
+liste.sh |sort -k 2 |head -n 1 |awk '{print $1}'

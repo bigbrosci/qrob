@@ -23,14 +23,14 @@ reformat.py POSCAR d
 reformat.py CONTCAR
 ```
 
-## sort_atoms_by_ele.py
+## sort_atoms.py
 
 Purpose
 - Reorder atoms in a VASP-format file by element groups.
 
 Usage
 ```bash
-sort_atoms_by_ele.py FILE [ELE1 ELE2 ...]
+sort_atoms.py -i FILE --mode element [--elements ELE1 ELE2 ...]
 ```
 
 - `FILE`: input POSCAR or compatible VASP-format file.
@@ -39,8 +39,10 @@ sort_atoms_by_ele.py FILE [ELE1 ELE2 ...]
 
 Examples
 ```bash
-sort_atoms_by_ele.py POSCAR
-sort_atoms_by_ele.py POSCAR Fe C H O
+sort_atoms.py -i POSCAR --mode element
+sort_atoms.py -i POSCAR --mode element --elements Fe C H O
+sort_atoms.py -i POSCAR --mode z
+sort_atoms.py -i POSCAR --mode z-within-element --elements Ni C H O
 ```
 
 ## Notes

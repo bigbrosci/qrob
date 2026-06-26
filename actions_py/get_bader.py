@@ -1,4 +1,18 @@
 #!/usr/bin/env python3
+"""
+Read VTST Bader output files and report per-atom charge transfer values.
+
+This unified helper reads `ACF.dat`, `POTCAR`, and `POSCAR`, computes
+`ZVAL - Bader charge` for each atom, writes a CSV for all atoms, and can
+optionally print only selected atoms by element symbol or atom index.
+
+Examples:
+  python get_bader.py
+  python get_bader.py O
+  python get_bader.py 0 3 5
+  python get_bader.py O 0-5
+"""
+
 import sys
 from pathlib import Path
 
@@ -11,143 +25,155 @@ from actions_py.bootstrap import ensure_repo_root
 ensure_repo_root()
 
 import argparse
-import sys
 import os
+import re
 from typing import List, Tuple
+
 from brain.poscar import parse_atom_targets
-from ase.io import read
-from collections import defaultdict
 
 
 def read_acf(acf_file: str) -> List[float]:
-    """Read ACF.dat file and extract Bader charges for each atom."""
-    with open(acf_file, 'r') as file:
+    with open(acf_file, "r", encoding="utf-8") as file:
         lines = file.readlines()
-        # typical ACF.dat has header lines; keep existing slicing
-        charge_data = lines[2:-4]
-        bader_charges = [float(line.split()[4]) for line in charge_data]
-    return bader_charges
+
+    charges: List[float] = []
+    for line in lines:
+        parts = line.split()
+        if len(parts) >= 5 and parts[0].isdigit():
+            charges.append(float(parts[4]))
+    return charges
 
 
-def read_potcar_with_zval(potcar_file: str):
-    """Read POTCAR file and extract elements along with their ZVAL values."""
-    elements_zval = {}
-    with open(potcar_file, 'r') as file:
-        current_element = ""
+def read_potcar_with_zval(potcar_file: str) -> Tuple[List[str], dict[str, float]]:
+    ordered_elements: List[str] = []
+    elements_zval: dict[str, float] = {}
+    current_element = ""
+
+    with open(potcar_file, "r", encoding="utf-8") as file:
         for line in file:
-            if 'VRHFIN' in line:
-                current_element = line.split('=')[1].split(':')[0].strip()
-            if 'ZVAL' in line:
-                # Keep current parsing logic; POTCAR formatting can vary
+            if "VRHFIN" in line:
+                current_element = line.split("=")[1].split(":")[0].strip()
+                ordered_elements.append(current_element)
+            elif "ZVAL" in line and current_element:
                 try:
-                    zval = float(line.split(';')[1].split('=')[1].strip().split()[0])
+                    zval = float(line.split(";")[1].split("=")[1].strip().split()[0])
                 except Exception:
-                    # fallback: try to extract last float in the line
-                    parts = [p for p in line.replace('=', ' ').split() if any(ch.isdigit() for ch in p)]
+                    parts = [p for p in line.replace("=", " ").split() if re.search(r"\d", p)]
                     zval = float(parts[-1])
                 elements_zval[current_element] = zval
-    return elements_zval
+
+    # POTCAR blocks are repeated in some files; keep first-seen order unique.
+    unique_order: List[str] = []
+    for element in ordered_elements:
+        if element not in unique_order:
+            unique_order.append(element)
+    return unique_order, elements_zval
 
 
-def read_poscar(poscar_file: str) -> List[int]:
-    """Read POSCAR file and determine the number of each type of atom."""
-    with open(poscar_file, 'r') as file:
+def read_poscar_counts(poscar_file: str) -> List[int]:
+    with open(poscar_file, "r", encoding="utf-8") as file:
         lines = file.readlines()
-        atom_counts = [int(x) for x in lines[6].split()]
-    return atom_counts
+    return [int(x) for x in lines[6].split()]
 
 
-def calculate_bader_charge(acf_file: str, potcar_file: str, poscar_file: str) -> List[Tuple[int, str, float]]:
-    """Calculate the Bader charge for each atom and return list of (index, element, charge)."""
-    bader_charges_raw = read_acf(acf_file)
-    elements_zval = read_potcar_with_zval(potcar_file)
-    atom_counts = read_poscar(poscar_file)
+def calculate_bader_charge(acf_file: str, potcar_file: str, poscar_file: str) -> List[Tuple[int, str, float, float, float]]:
+    bader_charges = read_acf(acf_file)
+    element_order, elements_zval = read_potcar_with_zval(potcar_file)
+    atom_counts = read_poscar_counts(poscar_file)
 
-    output: List[Tuple[int, str, float]] = []
+    output: List[Tuple[int, str, float, float, float]] = []
     atom_index = 1
-    element_list = list(elements_zval.keys())
+
     for i, count in enumerate(atom_counts):
-        element = element_list[i]
+        element = element_order[i]
         zval = elements_zval[element]
         for _ in range(count):
-            adjusted_charge = zval - bader_charges_raw[atom_index - 1]
-            output.append((atom_index, element, adjusted_charge))
+            bader_charge = bader_charges[atom_index - 1]
+            charge_transfer = zval - bader_charge
+            output.append((atom_index, element, bader_charge, zval, charge_transfer))
             atom_index += 1
 
     return output
 
 
-# Selection of atoms is handled by `atom_selector.parse_atom_targets`, which
-# returns 0-based atom indices given element symbols or 0-based indices.
+def write_csv(all_data: List[Tuple[int, str, float, float, float]], out_file: str) -> None:
+    with open(out_file, "w", encoding="utf-8") as fh:
+        fh.write("Index,Element,BaderCharge,ZVAL,ChargeTransfer\n")
+        for idx, elem, bader_charge, zval, charge_transfer in all_data:
+            fh.write(f"{idx},{elem},{bader_charge},{zval},{charge_transfer}\n")
 
 
-def write_csv(all_data: List[Tuple[int, str, float]], out_file: str):
-    with open(out_file, 'w') as fh:
-        fh.write('Index,Element,Charge\n')
-        for idx, elem, ch in all_data:
-            fh.write(f"{idx},{elem},{ch}\n")
+def write_dat(all_data: List[Tuple[int, str, float, float, float]], out_file: str) -> None:
+    with open(out_file, "w", encoding="utf-8") as fh:
+        fh.write("Element\tNo.\tCHARGE\tZVAL\tZVAL-CHARGE\n")
+        for idx, elem, bader_charge, zval, charge_transfer in all_data:
+            fh.write(f"{elem}\t{idx}\t{bader_charge:.4f}\t{zval}\t{charge_transfer:.4f}\n")
 
 
-def main():
-    parser = argparse.ArgumentParser(description='Print Bader charges for specified atoms and save full list')
-    parser.add_argument('targets', nargs='*', help="Element symbols or 0-based atom indices. If omitted, only full CSV is written.")
-    parser.add_argument('--acf', default='./ACF.dat', help='Path to ACF.dat')
-    parser.add_argument('--potcar', default='./POTCAR', help='Path to POTCAR')
-    parser.add_argument('--poscar', default='./POSCAR', help='Path to POSCAR')
-    parser.add_argument('--out', default='bader_all.csv', help='Output CSV filename for all atoms')
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Print Bader charge-transfer values for selected atoms and save the full list."
+    )
+    parser.add_argument(
+        "targets",
+        nargs="*",
+        help="Element symbols or 0-based atom indices/ranges. If omitted, all atoms are printed.",
+    )
+    parser.add_argument("--acf", default="./ACF.dat", help="Path to ACF.dat")
+    parser.add_argument("--potcar", default="./POTCAR", help="Path to POTCAR")
+    parser.add_argument("--poscar", default="./POSCAR", help="Path to POSCAR")
+    parser.add_argument("--out", default="bader_all.csv", help="CSV output filename for all atoms")
+    parser.add_argument(
+        "--dat-out",
+        default="bader_charges.dat",
+        help="Legacy tab-delimited output filename for all atoms",
+    )
     args = parser.parse_args()
 
-    for p in (args.acf, args.potcar, args.poscar):
-        if not os.path.exists(p):
-            print(f"Error: required file '{p}' not found", file=sys.stderr)
-            sys.exit(2)
+    for path in (args.acf, args.potcar, args.poscar):
+        if not os.path.exists(path):
+            print(f"Error: required file '{path}' not found", file=sys.stderr)
+            return 2
 
     all_data = calculate_bader_charge(args.acf, args.potcar, args.poscar)
-
-    # Always write full CSV
     write_csv(all_data, args.out)
+    write_dat(all_data, args.dat_out)
 
-    # If targets given, use atom_selector to parse them (0-based indices)
     if args.targets:
         try:
             idxs0 = parse_atom_targets(args.targets, args.poscar)
-        except Exception as e:
-            print(f"Error parsing targets: {e}", file=sys.stderr)
-            sys.exit(4)
+        except Exception as exc:
+            print(f"Error parsing targets: {exc}", file=sys.stderr)
+            return 4
 
-        if not idxs0:
-            print('No matching atoms found for given targets.', file=sys.stderr)
-            sys.exit(0)
+        if not idxs0 and any("-" in target for target in args.targets):
+            expanded: List[int] = []
+            natoms = len(all_data)
+            for target in args.targets:
+                match = re.fullmatch(r"(\d+)-(\d+)", target)
+                if match:
+                    start = int(match.group(1))
+                    end = int(match.group(2))
+                    if start > end:
+                        start, end = end, start
+                    expanded.extend(i for i in range(start, end + 1) if 0 <= i < natoms)
+            idxs0 = list(dict.fromkeys(expanded))
 
-        # convert to 1-based indices used in `all_data`
         wanted = set(i + 1 for i in idxs0)
-        sel = [entry for entry in all_data if entry[0] in wanted]
-        if sel:
-            print('Index,Element,Charge')
-            for idx, elem, ch in sel:
-                print(f"{idx},{elem},{ch}")
-        else:
-            print('No matching atoms found for given targets.', file=sys.stderr)
+        selected = [entry for entry in all_data if entry[0] in wanted]
     else:
-        # Print all
-        print('Index,Element,Charge')
-        for idx, elem, ch in all_data:
-            print(f"{idx},{elem},{ch}")
+        selected = all_data
 
-    # ASE integration: read POSCAR and demonstrate ASE capabilities
-    atoms = read(args.poscar, format='vasp')
-    print(len(atoms))
-    print(atoms.get_chemical_symbols())
-    print(atoms.get_positions())         # cartesian
-    print(atoms.get_scaled_positions())  # direct
-    print(atoms.get_cell())
+    if not selected:
+        print("No matching atoms found for the requested targets.", file=sys.stderr)
+        return 0
 
-    # map element -> 1-based atom indices
-    idxs = defaultdict(list)
-    for i, s in enumerate(atoms.get_chemical_symbols(), start=1):
-        idxs[s].append(i)
-    print(idxs['O'])  # indices of all oxygens
+    print("Index,Element,BaderCharge,ZVAL,ChargeTransfer")
+    for idx, elem, bader_charge, zval, charge_transfer in selected:
+        print(f"{idx},{elem},{bader_charge},{zval},{charge_transfer}")
+
+    return 0
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    sys.exit(main())

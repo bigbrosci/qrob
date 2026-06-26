@@ -116,7 +116,7 @@ Actions, are the specific scripts we used in our daily work, in other words, the
 | add.py         | To copy atom(s) from one POSCAR to another                   |
 | cssm.py        | To cleave the stable surfaces of metals: based on ASE modules |
 | dcenter.py     | To calculate the d-band center                               |
-| delete.py      | To delete atom(s) from POSCAR/CONTCAR                        |
+| delete_atoms.py | To delete atom(s) from POSCAR/CONTCAR                       |
 | dire2cart.py   | To convert the Direct to Cartesian Coordinates; Fix the specific layers from inputs |
 | dos_extract.py | To extract the specific dos information. (Whatever combinations you like) |
 | entropy.py     | To calculate the entropy and Zero Point Energy (ZPE) from frequency calculations |
@@ -131,7 +131,7 @@ Actions, are the specific scripts we used in our daily work, in other words, the
 | pbeband.py     | To generate the data for plotting the band structure from GGA-PBE |
 | hsekpoints.py  | To generate the KPOINTS file for HSE-band structure calculations. |
 | hseband.py     | To generate the data for plotting the band structure from HSE |
-| sortcar.py     | To sort the coordinates of each element in the z directions  |
+| sort_atoms.py | To sort atoms by element order and/or z direction            |
 | switch.py      | To get all the possibilities of switching two atoms from two layers; for segregation calculations |
 | translate.py   | To shift, translate or move atoms in the POSCAR file         |
 | vtotav.py      | To generate the LCOPOT_Z file to plot the workfunction       |
@@ -777,45 +777,57 @@ qli@p015:~/Desktop/robot_test$ dire2cart.py POSCAR  4
 * In the last case, the bottom four layers will be fixed. 
   * Be Careful，the threshold for determining layers are 0.5 $\AA$, you can change the number in `dire2cart.py` based on your specific system.
 
-##### sortcar.py 
+##### sort_atoms.py 
 
-`sortcar.py` is used to sort the elements in POSCAR by their `z` directions. To use it, type command:
+`sort_atoms.py` is the unified helper for atom reordering in POSCAR-like files. It can group atoms by element, sort all atoms by Cartesian `z`, or sort by `z` within each element group.
 
-`sortcar.py file_to_be_sorted`.  
+```bash
+qli@p015:$ sort_atoms.py -i POSCAR --mode element
+qli@p015:$ sort_atoms.py -i POSCAR --mode element --elements Fe C H O
+qli@p015:$ sort_atoms.py -i POSCAR --mode z
+qli@p015:$ sort_atoms.py -i POSCAR --mode z-within-element --elements Ni C H O
+qli@p015:$ sort_atoms.py -i POSCAR --mode element --elements Ru O --fix-below 2.0
+```
 
-This will separate the elements into different layers and be very useful when we want to fix or relax atoms by using `sed` or `vim`. 
+In these examples:
+
+* we group atoms alphabetically by element
+* we group atoms in the custom order `Fe`, `C`, `H`, `O`, then append any remaining elements
+* we sort all atoms globally by their Cartesian `z` coordinates
+* we keep element groups but sort the atoms inside each group by `z`
+* we group `Ru` and `O` first and then mark atoms with `z < 2.0 Å` as fixed in the written output
 
 ##### fix_atoms.py
 
-`fix_atoms.py` is used to fix or relax the atoms in one file. (Yes, it can relax the atoms in spite that the script name is called fix_atoms.py) The best way to use it would be: `fix_atoms.py  file  atoms   TTF`
+`fix_atoms.py` is the unified helper for fixing or relaxing atoms in a POSCAR-like file. It supports selection by atom index, element, bottom layers, and Cartesian `z` cutoff, and these selectors can be combined in one command.
 
 ```bash
-qli@p015:$ fix_atoms.py POSCAR C H O FFT    
-qli@p015:$ fix_atoms.py IS C H O 1-10 TTF
-qli@p015:$ fix_atoms.py CONTCAR C H O 1-10 21 FFF
-qli@p015:$ fix_atoms.py POSCAR 1- TTT
+qli@p015:$ fix_atoms.py -i POSCAR --indices 1-6 --flags FFF
+qli@p015:$ fix_atoms.py -i POSCAR --elements C H O --flags TTF
+qli@p015:$ fix_atoms.py -i CONTCAR --layers 2 --flags FFF
+qli@p015:$ fix_atoms.py -i POSCAR --z-below 8.0 --flags FFF
+qli@p015:$ fix_atoms.py -i POSCAR --indices 1-10 21 --elements O --flags TTT
 ```
 
-In these four commands above：
+In these examples:
 
-* we fix the xy directions of all C, H and O atoms, and allow the z direction to relax in `POSCAR`
-* we fix the z directions, relax x and y for all C, H, O, `No.1 to No.10` atoms in file `IS` (`IS`  must have the same format as POSCAR file)
-* we fix xyz directions for all C, H, O, `No.1 to No.10`, and No.21 atoms in `CONTCAR`
-* we relax all atoms (`1-`) in POSCAR.
+* we fix x, y, and z for atoms `1-6`
+* we fix y only while allowing x and z to relax for all `C`, `H`, and `O` atoms
+* we fix the bottom two slab layers in `CONTCAR`
+* we fix all atoms with Cartesian `z < 8.0 Å`
+* we relax the selected atoms by assigning `TTT`
 
 
 
-#### delete.py  
+#### delete_atoms.py  
 
-`delete.py ` is used to delete one or more atoms from the file. The right command to use it is: 
-
-`delete.py file atoms`
+`delete_atoms.py` is the unified helper for deleting atoms from a POSCAR-like file. It supports element-based deletion, index/range deletion, and a hydrogen-cleanup mode that removes H atoms beyond a cutoff from a reference element.
 
 ```bash
-qli@p015:$ delete.py POSCAR C           # Delete all C atoms
-qli@p015:$ delete.py POSCAR C 1-3       # Delete all C atoms and 1,2,3 atoms
-qli@p015:$ delete.py CONTCAR H 1-3 10   # Delete all H atoms and 1,2,3,10 atomsin CONTCAR
-qli@p015:$ delete.py POSCAR 12-   		# Delete all atoms from 12 to end in POSCAR.....
+qli@p015:$ delete_atoms.py POSCAR C
+qli@p015:$ delete_atoms.py POSCAR C 0-3
+qli@p015:$ delete_atoms.py CONTCAR --one-based H 1-3 10
+qli@p015:$ delete_atoms.py POSCAR --delete-far-h --anchor-element N --distance-cutoff 1.5
 ```
 
 * Q-robot can analyze the atoms you want to delete. You can type:
@@ -1070,7 +1082,7 @@ qli@p015:~/Desktop/robot_test$
 #### Work Function
 
 * vtotav.py: A python script to generate the electronic potentials for work functions. It is from [ASE_tools](https://github.com/compphys/ase_tools/blob/master/scripts/vtotav.py) 
-* wplot.py: Plot the output (`LOCPOT_Z`) from vtotav.py
+* wplot.py: Plot the output (`LOCPOT_Z`) from `vtotav.py`, or compute the work-function plot directly from `LOCPOT` and `OUTCAR`
 
 Examples to use them:
 
@@ -1091,7 +1103,8 @@ End of calculation.
 Program was running for 2.08 seconds.
 qli@p015:~/Desktop/robot_test$ ls
 ACF.dat  DOSCAR   LOCPOT LOCPOT_Z PCDAT AVF.dat  EIGENVAL  POSCAR  sub24   XDATCAR  BCF.dat  IBZKPT   OSZICAR  POTCAR CONTCAR  INCAR OUTCAR  PROCAR KPOINTS  REPORT  vasprun.xml
-qli@p015:~/Desktop/robot_test$ wplot.py 
+qli@p015:~/Desktop/robot_test$ wplot.py
+qli@p015:~/Desktop/robot_test$ wplot.py --mode locpot --locpot LOCPOT --outcar OUTCAR --no-show
 
 ```
 
@@ -1462,6 +1475,7 @@ Temperature (K): 298.13  S (ev/K):   0.0002823 TS (eV):  0.0842  E_ZPE (eV): 1.1
 qli@p015:~/teklahome/ru_chbr/upload/gas/CH4/freq$ entropy.py  300 
 Temperature (K): 300.0   S (ev/K):   0.0002839 TS (eV):  0.0852  E_ZPE (eV): 1.1885
 qli@p015:~/teklahome/ru_chbr/upload/gas/CH4/freq$ zpe.py
+qli@p015:~/teklahome/ru_chbr/upload/gas/CH4/freq$ zpe.py --temperature 298.15 --show-imag
 1.188473197 
 ```
 

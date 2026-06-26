@@ -1,77 +1,273 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+"""
+Set selective-dynamics flags in a VASP POSCAR using one unified CLI.
+
+You can select atoms by any combination of:
+- atom indices or ranges
+- element symbols
+- bottom N layers
+- Cartesian z cutoff
+
+Examples:
+  python fix_atoms.py -i POSCAR --indices 1-6 --flags FFF
+  python fix_atoms.py -i POSCAR --elements C O --flags TTF
+  python fix_atoms.py -i POSCAR --layers 2 --layer-threshold 0.5 --flags FFF
+  python fix_atoms.py -i POSCAR --z-below 8.0 --flags FFF
+  python fix_atoms.py -i POSCAR --indices 1-4 10 --elements Ru --z-below 7.5 --flags FFF
+
+Index notes:
+- By default, indices are 1-based to match older qrob usage.
+- Use --zero-based if you want 0-based indexing.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import re
 import sys
 from pathlib import Path
 
+import numpy as np
+from ase.io import read
+from ase.io.vasp import write_vasp
+
 repo_root = Path(__file__).resolve().parent.parent
-brain_root = repo_root / "brain"
-for candidate in (repo_root, brain_root):
-    if str(candidate) not in sys.path:
-        sys.path.insert(0, str(candidate))
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
 
 from actions_py.bootstrap import ensure_repo_root
 
 ensure_repo_root()
 
 
-'''
-Written By Qiang on 17th, August, 2018
-This script is used to fix and relax the atoms in POSCAR
+def detect_input_file(path: str | None) -> str:
+    if path is not None:
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Input file not found: {path}")
+        return path
 
-for example:
-
-1) fix the atoms 1-6 with T T F 
-python fix_atoms.py 1-6 TTF
-2) fix all C atoms in POSCAR with T F F 
-python fix_atoms.py C TFF 
-3) fix all C and O atoms with F F F:
-python fix_atoms.py C O  FFF
-4) relax the atoms: 1 3 4 9-12 with T T T
-python fix_atoms.py 1 3 4 9-12 TTT
-
-'''
-
-from lattice import *
-import sys
-import os
+    for candidate in ("POSCAR", "CONTCAR"):
+        if os.path.exists(candidate):
+            return candidate
+    raise FileNotFoundError("Could not find POSCAR or CONTCAR in the current directory.")
 
 
-if len(sys.argv) <= 2:
-    print('\nCommand to use it: fix_atoms file atoms FFF \n')
-    exit()
-elif len(sys.argv) == 3:
-    print("\nWe are going to fix %s......" %sys.argv[1]) 
-    script, file_in, atom_s = sys.argv[:]
-    tf_in = 'FFF'
-else:
-    print("\nWe are going to fix %s......" %sys.argv[1]) 
-    script, file_in = sys.argv[:2]
-    tf_in = sys.argv[-1]
-    if len(tf_in) != 3 and 'T' not in tf_in and 'F' not in tf_in:
-        atom_s = sys.argv[2:]
-        tf_in  = 'FFF'
+def parse_index_token(token: str, natoms: int, zero_based: bool) -> list[int]:
+    token = token.strip()
+    if not token:
+        return []
+
+    single_match = re.fullmatch(r"\d+", token)
+    if single_match:
+        raw = int(token)
+        idx = raw if zero_based else raw - 1
+        return [idx] if 0 <= idx < natoms else []
+
+    range_match = re.fullmatch(r"(\d*)-(\d*)", token)
+    if not range_match:
+        raise ValueError(f"Unrecognized index token: {token}")
+
+    start_s, end_s = range_match.groups()
+    if not start_s and not end_s:
+        raise ValueError("Range token '-' is ambiguous. Use forms like '1-4' or '5-'.")
+
+    if zero_based:
+        start = int(start_s) if start_s else 0
+        end = int(end_s) if end_s else natoms - 1
     else:
-        atom_s = sys.argv[2:-1]
-        
-tf = list(tf_in)
-      
-lines = read_car(file_in)[0]
-atom_list = get_atom_list(lines, atom_s)
-line_list = [i+8 for i in atom_list]
-print(atom_list)
+        start = int(start_s) - 1 if start_s else 0
+        end = int(end_s) - 1 if end_s else natoms - 1
 
-def fix_one_line(line, tf_in):
-    infor = line.strip().split()
-    new_line = ' %s  %s\n' %('  '.join(infor[0:3]), ' '.join(tf_in))
-    return new_line
+    if start > end:
+        start, end = end, start
+    start = max(start, 0)
+    end = min(end, natoms - 1)
+    return list(range(start, end + 1))
 
-out_name = file_in + '_fixed'
-file_out = open(out_name, 'w')
-for num, line in enumerate(lines):    
-    if num in line_list:
-        new_line = fix_one_line(line, tf_in)
-        file_out.write(new_line)
+
+def parse_indices(tokens: list[str], natoms: int, zero_based: bool) -> list[int]:
+    indices: list[int] = []
+    for token in tokens:
+        indices.extend(parse_index_token(token, natoms, zero_based))
+    return unique(indices)
+
+
+def parse_elements(elements: list[str], symbols: list[str]) -> list[int]:
+    wanted = {element.lower() for element in elements}
+    return [idx for idx, symbol in enumerate(symbols) if symbol.lower() in wanted]
+
+
+def find_layers(z_coords: np.ndarray, threshold: float) -> list[list[int]]:
+    if len(z_coords) == 0:
+        return []
+
+    idx_z = sorted(enumerate(z_coords), key=lambda pair: pair[1])
+    layers: list[list[int]] = [[idx_z[0][0]]]
+    prev_z = idx_z[0][1]
+
+    for idx, z in idx_z[1:]:
+        if z - prev_z > threshold:
+            layers.append([idx])
+        else:
+            layers[-1].append(idx)
+        prev_z = z
+    return layers
+
+
+def unique(values: list[int]) -> list[int]:
+    seen: set[int] = set()
+    ordered: list[int] = []
+    for value in values:
+        if value not in seen:
+            seen.add(value)
+            ordered.append(value)
+    return ordered
+
+
+def build_selection(args: argparse.Namespace, atoms) -> tuple[list[int], list[str]]:
+    natoms = len(atoms)
+    symbols = atoms.get_chemical_symbols()
+    positions = atoms.get_positions()
+
+    selected: list[int] = []
+    reasons: list[str] = []
+
+    if args.indices:
+        idxs = parse_indices(args.indices, natoms, args.zero_based)
+        selected.extend(idxs)
+        basis = "0-based" if args.zero_based else "1-based"
+        reasons.append(f"indices ({basis}): {' '.join(args.indices)}")
+
+    if args.elements:
+        idxs = parse_elements(args.elements, symbols)
+        selected.extend(idxs)
+        reasons.append(f"elements: {' '.join(args.elements)}")
+
+    if args.layers is not None:
+        layers = find_layers(positions[:, 2], args.layer_threshold)
+        n_fix = min(args.layers, len(layers))
+        idxs = [idx for layer in layers[:n_fix] for idx in layer]
+        selected.extend(idxs)
+        reasons.append(f"bottom layers: {n_fix} (threshold={args.layer_threshold})")
+
+    if args.z_below is not None:
+        idxs = [idx for idx, pos in enumerate(positions) if pos[2] < args.z_below]
+        selected.extend(idxs)
+        reasons.append(f"z < {args.z_below}")
+
+    return unique(selected), reasons
+
+
+def parse_flags(flags: str) -> list[bool]:
+    if not re.fullmatch(r"[TFtf]{3}", flags):
+        raise ValueError("Flags must be exactly three T/F characters, for example FFF or TTF.")
+    return [char.upper() == "T" for char in flags]
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Fix or relax atoms in a VASP POSCAR by indices, elements, layers, and/or z cutoff.",
+        epilog=(
+            "Examples:\n"
+            "  python fix_atoms.py -i POSCAR --indices 1-6 --flags FFF\n"
+            "  python fix_atoms.py -i POSCAR --elements C O --flags TTF\n"
+            "  python fix_atoms.py -i POSCAR --layers 2 --layer-threshold 0.5 --flags FFF\n"
+            "  python fix_atoms.py -i POSCAR --z-below 8.0 --flags FFF\n"
+            "  python fix_atoms.py -i POSCAR --elements Ru --flags FFF\n"
+            "  python fix_atoms.py -i POSCAR --indices 0-5 --zero-based --flags TTT"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    parser.add_argument("-i", "--input", help="Input POSCAR/CONTCAR file (default: POSCAR or CONTCAR in cwd)")
+    parser.add_argument(
+        "-o",
+        "--output",
+        help="Output filename (default: <input>_fixed)",
+    )
+    parser.add_argument(
+        "--flags",
+        default="FFF",
+        help="Selective-dynamics flags applied to the selected atoms, e.g. FFF, TTF, TTT (default: FFF)",
+    )
+    parser.add_argument(
+        "--indices",
+        nargs="+",
+        help="Atom indices or ranges such as 1 3 5-8 12- (1-based by default)",
+    )
+    parser.add_argument(
+        "--zero-based",
+        action="store_true",
+        help="Interpret --indices as 0-based instead of 1-based",
+    )
+    parser.add_argument(
+        "--elements",
+        nargs="+",
+        help="Element symbols to select, for example --elements Ru O",
+    )
+    parser.add_argument(
+        "--layers",
+        type=int,
+        help="Fix the bottom N layers based on Cartesian z grouping",
+    )
+    parser.add_argument(
+        "--layer-threshold",
+        type=float,
+        default=0.5,
+        help="z-gap threshold in Angstrom used to separate layers (default: 0.5)",
+    )
+    parser.add_argument(
+        "--z-below",
+        type=float,
+        help="Select atoms with Cartesian z smaller than this value in Angstrom",
+    )
+    parser.add_argument(
+        "--cartesian",
+        action="store_true",
+        help="Write Cartesian coordinates instead of direct coordinates",
+    )
+    args = parser.parse_args(argv)
+
+    if not any([args.indices, args.elements, args.layers is not None, args.z_below is not None]):
+        parser.error("At least one selector is required: --indices, --elements, --layers, or --z-below.")
+
+    infile = detect_input_file(args.input)
+    atoms = read(infile, format="vasp")
+    natoms = len(atoms)
+
+    selected, reasons = build_selection(args, atoms)
+    if not selected:
+        print("No atoms matched the requested selectors. Nothing was written.")
+        return 0
+
+    if "selective_dynamics" in atoms.arrays and atoms.arrays["selective_dynamics"].shape == (natoms, 3):
+        selective = atoms.arrays["selective_dynamics"].copy()
     else:
-        file_out.write(line)         
-file_out.close()
-print('\nThe output file is:\t %s' %(out_name))
+        selective = np.ones((natoms, 3), dtype=bool)
+
+    flag_values = np.array(parse_flags(args.flags), dtype=bool)
+    for idx in selected:
+        selective[idx, :] = flag_values
+
+    output = args.output if args.output else f"{infile}_fixed"
+    write_vasp(
+        output,
+        atoms,
+        direct=not args.cartesian,
+        selective_dynamics=selective,
+        vasp5=True,
+    )
+
+    print(f"Input: {infile}")
+    print(f"Output: {output}")
+    print(f"Selected {len(selected)} atom(s) using: {', '.join(reasons)}")
+    print(f"Applied selective-dynamics flags: {' '.join(flag.upper() for flag in args.flags)}")
+    if args.indices and not args.zero_based:
+        print("Index mode: 1-based")
+    elif args.indices:
+        print("Index mode: 0-based")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

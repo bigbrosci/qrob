@@ -19,7 +19,6 @@ import numpy as np
 from ase.io import read, write
 import os
 
-#os.chdir('/home/win.udel.edu/qli/Desktop/freq/')
 
 ## Read POSCAR
 print('Read POSCAR >>>\t')

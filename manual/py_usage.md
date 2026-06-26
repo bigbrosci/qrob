@@ -22,44 +22,53 @@ The `actions_py/` folder gathers the Python utilities that wrap the `brain/` kno
 
 ### Surface & POSCAR editing
 
-- `bottom.py` – reads `POSCAR`/`CONTCAR`, shifts the structure so the lowest atom is at a fixed Z (default +0.1 Å), and writes `_bottomed` output; run from the job folder with `python bottom.py` or just `bottom.py` when `PATH` is set.
+- `bottom.py` – reads `POSCAR`/`CONTCAR`, shifts the structure so the lowest atom is at a fixed Z (default +0.1 Å), and writes `_bottomed` output; add `--set-c-vacuum 15` to also reset the `c` vector to `z_max + 15 Å`, which replaces the old `bottom_slab.py` behavior.
 - `center_atoms.py` – centers and wraps the atoms in a POSCAR to the cell center; usage: `center_atoms.py POSCAR` and the script writes `POSCAR_centered`.
 - `cssm.py` – generates Slab POSCARs for the metals listed in `brain.data.dict_metals`; simply run `cssm.py` to cleave multiple surfaces (bcc 110, hcp 0001, fcc 111) and write the resulting files with the appropriate element line already inserted.
 - `expand.py` – expands a VASP cell by integer multiples; call `expand.py POSCAR Nx Ny Nz` to produce `POSCARex` with the enlarged supercell.
 - `move_atoms.py` – copies atom subsets from `file_from` to `file_to` (e.g., transfer adsorbates between slabs); invoke via `move_atoms.py POSCAR_small POSCAR_large C H 12`.
 - `move_slab.py` – adjusts a slab so the bottom atom is at `z≈0.2 Å` and adds 15 Å vacuum on top; run `move_slab.py` (it reads `POSCAR` and writes `POSCAR_new`).
 - `translate.py` – apply a translation vector or move specific atoms; pass `-x`, `-y`, `-z` or use point pairs `-a` / `-b` with `-s` to select atoms.
-- `swap_atoms.py` – replace selected atoms between two files by specifying `-A`, `-B`, `-s` (source indices), and `-f` (replacements); see the script help for exact flags.
+- `swap_atoms.py` – unified atom-position swapping helper. Use `within` to swap two atoms inside one POSCAR, or `between` to copy positions from one file into another. Examples:
+  - `swap_atoms.py within 3 8 -i POSCAR -o POSCAR_swapped`
+  - `swap_atoms.py between -A POSCAR_A -B POSCAR_B -s 1 2 -f 5 6`
 - `switch_atoms.py` – switch the chemical symbols of two atoms in a single POSCAR: `python switch_atoms.py 8 Mo 20 Ni` swaps atom 8 to Mo and atom 20 to Ni.
 - `reformat.py` – convert coordinates between direct and cartesian; usage `reformat.py POSCAR d` (or `c`) and the output file is named `<input>_direct` (or `_cartesian`).
-- `sort_atoms_by_ele.py` – group atoms by element; call `sort_atoms_by_ele.py POSCAR Fe C H O` (or omit the element order to use alphabetical grouping) to write `<input>_sorted`.
-- `delete_atoms.py` – remove atoms identified by element or zero-based index range; usage `delete_atoms.py POSCAR C 0 5` produces `POSCAR_deleted` and `atom_deleted` (a plain-text list of the removed atoms and their Cartesian coordinates).
-- `fix_by_atoms.py`, `fix_by_layer.py`, `fix_by_z.py` – set selective dynamics flags:
-  - `fix_by_atoms.py` accepts target lists (indices/elements) plus three-character flag strings (e.g., `TTF`).
-  - `fix_by_layer.py` constrains the bottom N layers of a slab based on grouped z coordinates.
-  - `fix_by_z.py zcut [FILE]` fixes atoms with z < `zcut` and writes `<input>_fixed`.
+- `sort_atoms.py` – unified atom-sorting helper. Use `--mode element` to group by element, `--mode z` to sort all atoms by Cartesian `z`, or `--mode z-within-element` to sort by `z` inside each element group. Examples:
+  - `sort_atoms.py -i POSCAR --mode element --elements Fe C H O`
+  - `sort_atoms.py -i POSCAR --mode z`
+  - `sort_atoms.py -i POSCAR --mode z-within-element --elements Ni C H O`
+- `delete_atoms.py` – unified atom-deletion helper. It removes atoms by element, index/range, and can also delete H atoms beyond a cutoff from an anchor element. Examples:
+  - `delete_atoms.py POSCAR C 0 5`
+  - `delete_atoms.py POSCAR --one-based C 1-3`
+  - `delete_atoms.py POSCAR --delete-far-h --anchor-element N --distance-cutoff 1.5`
+- `fix_atoms.py` – unified selective-dynamics helper. It can select atoms by index/range, element, bottom layers, and Cartesian `z` cutoff in one command. Examples:
+  - `fix_atoms.py -i POSCAR --indices 1-6 --flags FFF`
+  - `fix_atoms.py -i POSCAR --elements C O --flags TTF`
+  - `fix_atoms.py -i POSCAR --layers 2 --layer-threshold 0.5 --flags FFF`
+  - `fix_atoms.py -i POSCAR --z-below 8.0 --flags FFF`
 - `frequency_correction.py` – (still experimental) inspects `OUTCAR` frequencies, identifies the largest imaginary mode, and rewrites the structure for subsequent calculations.
 - `xyz_to_poscar.py` – convert an `.xyz` file to `POSCAR`; usage: `xyz_to_poscar.py molecule.xyz [OUTPOSCAR]`.
 
 ### Calculators & utilities
 
-- `get_incar.py` – wraps `brain.incar.build_incar`; pass keywords like `freq`, `dftd2`, `ispin`, `neb`, or `--list` to see supported tasks. Running `get_incar.py` without arguments now launches the Flask GUI instead of printing an INCAR.
+- `get_incar.py` – unified INCAR entrypoint. Pass keywords like `freq`, `dftd2`, `ispin`, `neb`, or `--list` to build an `INCAR`; run it without arguments to launch the Flask GUI.
 - `get_abc.py` – reads `POSCAR`/`CONTCAR` and prints the lattice lengths, face areas, and volume.
 - `kp.py` – generates `KPOINTS` from `POSCAR` or hand-crafted meshes; run `kp.py` in a folder with `POSCAR` and let the default mesh (3×3×1) or existing file drive the output.
 - `pp.py` – build `POTCAR` fragments by reading the local `POSCAR`; just run `pp.py` and it will select the required potentials from `brain.potcar`.
-- `plot_dft.py` – plot DFT results. Usage examples: `plot_dft.py --type linear -i data.csv` for linear regressions or `plot_dft.py --type neb --name JOBNAME` to visualize NEB energies. It supports `--dirs` to specify subdirectories.
+- `plot_dft.py` – lightweight front-end for shared DFT plotting helpers. Use `plot_dft.py --type linear -i data.csv` for linear regressions or `plot_dft.py --type neb --name JOBNAME` to visualize NEB energies. It supports `--dirs` to specify subdirectories.
 - `vtotav.py` – average a LOCPOT/CHGCAR file along a direction to produce one-dimensional curves; call `vtotav.py LOCPOT z`.
 - `dos_extract.py` – sum DOS for selected atoms/orbitals by reading `DOSCAR` and `POSCAR`; usage `dos_extract.py C s DOS_out.dat` (select atoms and output file name).
 - `dcenter.py` – integrate `.dat` files (e.g., produced by `dos_extract.py`) to compute d-band center between a start/end energy.
 - `get_dimer.py` – prepare the POSCAR needed for a dimer calculation after a frequency run (requires `IBRION=5`/`NWRITE=3`); simply run `get_dimer.py` to generate the IDM-friendly structure.
 - `get_dis_AB.py` – print the distance between two atom indices: `get_dis_AB.py 0 3`.
-- `get_fcc_bulk.py` – regenerate an fcc POSCAR: `get_fcc_bulk.py Pt 3.92` writes `POSCAR` using ASE’s `bulk` builder.
-- `bm_fitting.py` – fit Birch–Murnaghan data; supply a CSV with lattice parameter and energy columns (e.g., `bm_fitting.py data.csv`).
-- `get_bader.py` – parse `ACF.dat` and `POTCAR` to gather Bader charges alongside ZVAL information; run `get_bader.py POSCAR` after the `bader` run.
+- `get_metal_bulk.py` – generate fcc, bcc, or hcp metal bulk structures with ASE. Examples: `get_metal_bulk.py Pt fcc --a 3.92`, `get_metal_bulk.py Fe bcc --a 2.87`, or `get_metal_bulk.py Ru hcp --a 2.706 --c 4.282`.
+- `bm.py` – fit Birch–Murnaghan data; supply a CSV with lattice parameter and energy columns (for example, `bm.py data.csv`).
+- `get_bader.py` – unified Bader-charge helper. It parses `ACF.dat`, `POTCAR`, and `POSCAR`, writes `bader_all.csv` plus `bader_charges.dat`, and can print selected atoms by element or atom index/range.
 - `get_bandgap.py` – compute band-edge energies from `OUTCAR`/`EIGENVAL`; pass optional directory/`;g` to tune the Fermi level.
 - `get_mag.py` & `get_mag_ase.py` – print per-atom magnetizations; the former uses `brain.outcar.get_mag` (can take element/index selectors), while the latter relies purely on ASE and supports `--outcar`, `--index`, and JSON/text outputs.
 - `get_mass_center.py` – calculate the center of mass from `POSCAR`/`CONTCAR`, optionally write a `DIPOL` line back into an `INCAR` file.
-- `zpe.py` – read `OUTCAR` frequencies via `brain.outcar.get_freq` and print the zero-point energy (ZPE) in eV.
+- `zpe.py` – unified ZPE helper for `OUTCAR`. By default it prints the zero-point energy in eV, and it can also report the Helmholtz correction at a chosen temperature with `--temperature` plus any imaginary modes with `--show-imag`.
 
 ### 中文说明
 本节列出的脚本包含结构编辑（`translate.py` / `move_slab.py`）、参数生成（`get_incar.py`, `kp.py`）、物理分析（`get_bader.py`, `zpe.py`）等场景。若添加新工具，请在 `actions_py/` 新建脚本、使用 `ensure_repo_root()` 并同步更新本手册。
@@ -76,18 +85,12 @@ The local merge adds a larger legacy toolbox into `actions_py/`. Many of these s
 - `add_NH3_top.py` – place an `NH3` adsorbate on a top site.
 - `add_thiol_top.py` – place a thiol-like adsorbate on a top site.
 - `add_top.py` – add an adsorbate to a top site on a slab.
-- `bottom_slab.py` – normalize slab height by shifting the bottom layer to a chosen reference.
-- `cart2dire.py` – convert Cartesian coordinates to direct coordinates.
-- `cell_convert.py` – convert cell/coordinate representations for VASP structures.
-- `cell_modify.py` – edit lattice vectors or cell dimensions for a structure.
-- `center_atom.py` – move a selected atom to the cell center or a chosen reference position.
+- `cart2dire.py` – convert Cartesian coordinates to direct coordinates using ASE; by default it writes `<input>_direct`, or use `--in-place` to overwrite after creating a backup.
+- `cart2dire_original.py` – preserved math-based reference version that shows the manual Cartesian → direct conversion logic step by step.
+- `cell_convert.py` – normalize a VASP cell into a simpler orientation. Use `--mode ab-plane` to keep the original `a-b` angle while aligning `c` to `z`, or `--mode diagonal` to build a fully orthogonal box with the same lattice-vector lengths.
 - `contcar_to_mol.py` – extract a molecule-like fragment from `CONTCAR`.
-- `delete.py` – delete selected atoms from a structure using the legacy interface.
-- `delete_H.py` – remove hydrogen atoms from a structure.
 - `dihedral.py` – calculate or inspect a dihedral angle from selected atoms.
 - `dire2cart.py` – convert direct coordinates to Cartesian coordinates.
-- `fix_Ru.py` – apply selective-dynamics constraints tuned for Ru slab models.
-- `fix_atoms.py` – freeze selected atoms with legacy selective-dynamics logic.
 - `get_active_sites.py` – identify likely adsorption sites on a surface structure.
 - `get_intact_mol.py` – detect or extract intact molecular fragments from a slab calculation.
 - `get_poscar.py` – generate or rewrite a `POSCAR` from intermediate data.
@@ -99,19 +102,14 @@ The local merge adds a larger legacy toolbox into `actions_py/`. Many of these s
 - `merge.py` – merge two structures or datasets into a combined output.
 - `rotate.py` – rotate a structure or selected atoms.
 - `rotate_gas.py` – rotate a gas-phase molecule before adsorption or placement.
-- `sort_atoms_manually.py` – reorder atoms with an explicit user-provided sequence.
-- `sortcar.py` – sort atoms in a POSCAR-like file using the older sorting workflow.
-- `swap_poscar_atoms.py` – swap atom positions or identities inside a POSCAR.
 - `switch_layers.py` – exchange or relabel slab layers.
 - `wrap_atoms.py` – wrap atoms back into the unit cell.
 - `xyz2mol.py` – convert XYZ coordinates into a molecule representation for downstream workflows.
 
 ### Analysis, energetics, and data extraction
 
-- `bm.py` – legacy Birch-Murnaghan fitting helper for equation-of-state data.
 - `calc_NH.py` – compute N-H related geometric or energetic descriptors.
 - `calc_NH_bond.py` – measure or analyze N-H bond lengths.
-- `calc_hbonds.py` – identify and measure hydrogen bonds in a structure.
 - `check.py` – run a compact status or sanity check on common VASP outputs.
 - `check_bad_geos.py` – flag problematic or distorted geometries.
 - `check_data.py` – validate simple tabular or calculation data files.
@@ -120,7 +118,6 @@ The local merge adds a larger legacy toolbox into `actions_py/`. Many of these s
 - `check_geos.py` – batch-check many geometry folders from one command.
 - `d2_dic.py` – expose DFT-D2 correction constants or lookup data.
 - `entropy.py` – estimate entropic contributions from tabulated molecular data.
-- `freq_correction.py` – legacy frequency-based correction helper.
 - `get_G_NxHy.py` – estimate free-energy terms for NxHy species.
 - `get_bib.py` – extract bibliography information from stored references.
 - `get_data_infor.py` – collect summary information from calculation outputs.
@@ -130,29 +127,24 @@ The local merge adds a larger legacy toolbox into `actions_py/`. Many of these s
 - `get_gas_N2.py` – prepare or analyze gas-phase `N2` reference calculations.
 - `get_pdf_infor.py` – extract metadata or text snippets from PDF files.
 - `get_species_entropy.py` – return entropy values for a named species.
-- `get_zpe_from_outcar.py` – read zero-point energy information directly from `OUTCAR`.
 - `job_check.py` – summarize job-state or calculation health for one or more folders.
 - `job_path.py` – report calculation paths associated with tracked jobs.
 - `linear_fit.py` – run a simple linear regression on tabulated data.
 - `model_sim.py` – compare model outputs or calculate similarity metrics.
 - `overlap.py` – compute overlap-like metrics between datasets or structures.
-- `plot_lienar.py` – legacy plotting helper for linear-fit data.
-- `plot_neb.py` – plot NEB energy profiles from image folders.
-- `q_get_bader.py` – older Bader charge extraction helper.
+- `plot_lienar.py` – lightweight wrapper around the shared linear-fit plotting helper.
+- `plot_neb.py` – lightweight wrapper around the shared NEB plotting helper.
 - `ring_count.py` – count ring motifs in a molecular graph or structure.
-- `work_plot_08_30.py` – project-specific plotting helper preserved from the legacy tree.
-- `wplot.py` – generic plotting helper for workflow data.
+- `wplot.py` – unified work-function plotting helper. Use the default `--mode locpot-z` to plot `LOCPOT_Z` from `vtotav.py`, or `--mode locpot` to compute and plot the planar-average potential directly from `LOCPOT` and `OUTCAR`.
 - `xps.py` – estimate or summarize XPS-related shifts/data from calculations.
 
 ### Electronic-structure setup
 
 - `convert_xml_to_ml_ab_input.py` – turn `vasprun.xml`-style outputs into machine-learning adsorption/binding input tables.
-- `get_Ru_bulk.py` – generate an hcp Ru bulk structure with ASE.
 - `hseband.py` – prepare inputs for HSE band-structure calculations.
 - `hsekpoints.py` – generate HSE-friendly `KPOINTS`.
 - `id_to_cif.py` – fetch or convert a material identifier into a CIF file.
 - `in.py` – legacy INCAR generation shortcut.
-- `incar.py` – older command-line entry for building `INCAR` settings.
 - `md.py` – helper for molecular dynamics style VASP setups.
 - `nscf_pdos.py` – prepare non-self-consistent PDOS calculations.
 - `pbeband.py` – prepare PBE band-structure calculations.
