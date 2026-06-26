@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
 """Helpers for reading common information from VASP OUTCAR files."""
 
-from __future__ import annotations
-
-from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import Iterable
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
+
+try:
+    from dataclasses import dataclass
+except ImportError:  # pragma: no cover
+    def dataclass(cls=None, **kwargs):
+        def wrap(cls):
+            return cls
+        if cls is None:
+            return wrap
+        return wrap(cls)
 
 
 LOOK_POT = "POTCAR"
@@ -43,21 +50,21 @@ class ConvergenceSummary:
     mode: str
     converged: bool
     reason: str
-    action: str | None
+    action: Optional[str]
 
 
-def _ensure_path(path: str | Path = "OUTCAR") -> Path:
+def _ensure_path(path: Union[str, Path] = "OUTCAR") -> Path:
     return Path(path).resolve()
 
 
-def read_lines(path: str | Path = "OUTCAR") -> list[str]:
+def read_lines(path: Union[str, Path] = "OUTCAR") -> List[str]:
     outcar = _ensure_path(path)
     if not outcar.is_file():
         raise FileNotFoundError(f"No OUTCAR file found at {outcar}")
     return outcar.read_text(encoding="utf-8", errors="ignore").splitlines()
 
 
-def _get_dict_line(lines: list[str]) -> dict[str, list[int]]:
+def _get_dict_line(lines: List[str]) -> Dict[str, List[int]]:
     lookups = [
         LOOK_POT,
         LOOK_INCAR_START,
@@ -85,12 +92,12 @@ def _get_dict_line(lines: list[str]) -> dict[str, list[int]]:
     return result
 
 
-def get_vasp_version(path: str | Path = "OUTCAR") -> str:
+def get_vasp_version(path: Union[str, Path] = "OUTCAR") -> str:
     lines = read_lines(path)
     return lines[0].strip().split()[0]
 
 
-def get_incar(path: str | Path = "OUTCAR") -> dict[str, str]:
+def get_incar(path: Union[str, Path] = "OUTCAR") -> Dict[str, str]:
     lines = read_lines(path)
     dict_line = _get_dict_line(lines)
     incar_start_candidates = dict_line[LOOK_INCAR_START]
@@ -106,7 +113,7 @@ def get_incar(path: str | Path = "OUTCAR") -> dict[str, str]:
     if incar_end_num is None:
         return {}
 
-    dict_incar: dict[str, str] = {}
+    dict_incar: Dict[str, str] = {}
     for line in lines[incar_start_num:incar_end_num]:
         if "=" not in line:
             continue
@@ -128,7 +135,7 @@ def get_incar(path: str | Path = "OUTCAR") -> dict[str, str]:
     return dict_incar
 
 
-def get_volume_vectors(path: str | Path = "OUTCAR") -> tuple[np.ndarray, list[float], float]:
+def get_volume_vectors(path: Union[str, Path] = "OUTCAR") -> Tuple[np.ndarray, List[float], float]:
     lines = read_lines(path)
     dict_line = _get_dict_line(lines)
     volume_lines = dict_line[LOOK_VECTORS][-1]
@@ -141,14 +148,14 @@ def get_volume_vectors(path: str | Path = "OUTCAR") -> tuple[np.ndarray, list[fl
     return vector, length_abc, volume
 
 
-def get_kpoints(path: str | Path = "OUTCAR") -> str:
+def get_kpoints(path: Union[str, Path] = "OUTCAR") -> str:
     lines = read_lines(path)
     dict_line = _get_dict_line(lines)
     line_kpoints = dict_line[LOOK_KPOINTS][0]
     return lines[line_kpoints].split()[1]
 
 
-def get_position(path: str | Path = "OUTCAR") -> list[list[str]]:
+def get_position(path: Union[str, Path] = "OUTCAR") -> List[List[str]]:
     lines = read_lines(path)
     dict_line = _get_dict_line(lines)
     line_position_start = dict_line[LOOK_POSITION][-1]
@@ -164,7 +171,7 @@ def get_position(path: str | Path = "OUTCAR") -> list[list[str]]:
     return [line.split()[0:3] for line in position_lines]
 
 
-def get_iteration_info(path: str | Path = "OUTCAR") -> list[tuple[int, int, float]]:
+def get_iteration_info(path: Union[str, Path] = "OUTCAR") -> List[Tuple[int, int, float]]:
     lines = read_lines(path)
     dict_line = _get_dict_line(lines)
     lines_iteration = dict_line[LOOK_ITERATION]
@@ -181,14 +188,14 @@ def get_iteration_info(path: str | Path = "OUTCAR") -> list[tuple[int, int, floa
     return output
 
 
-def get_fermi(path: str | Path = "OUTCAR") -> str:
+def get_fermi(path: Union[str, Path] = "OUTCAR") -> str:
     lines = read_lines(path)
     dict_line = _get_dict_line(lines)
     line_fermi = dict_line[LOOK_FERMI][-1]
     return lines[line_fermi].split()[2]
 
 
-def get_vacuum(path: str | Path = "OUTCAR") -> tuple[str, str]:
+def get_vacuum(path: Union[str, Path] = "OUTCAR") -> Tuple[str, str]:
     lines = read_lines(path)
     dict_line = _get_dict_line(lines)
     line_vacuum = dict_line[LOOK_VACUUM][-1]
@@ -196,7 +203,7 @@ def get_vacuum(path: str | Path = "OUTCAR") -> tuple[str, str]:
     return vacuum_up, vacuum_dn
 
 
-def get_freq(path: str | Path = "OUTCAR") -> tuple[list[float], list[float]]:
+def get_freq(path: Union[str, Path] = "OUTCAR") -> Tuple[List[float], List[float]]:
     lines = read_lines(path)
     dict_line = _get_dict_line(lines)
     nu = []
@@ -208,7 +215,7 @@ def get_freq(path: str | Path = "OUTCAR") -> tuple[list[float], list[float]]:
     return nu, zpe
 
 
-def get_freq_i(path: str | Path = "OUTCAR") -> tuple[list[float], list[float]]:
+def get_freq_i(path: Union[str, Path] = "OUTCAR") -> Tuple[List[float], List[float]]:
     lines = read_lines(path)
     dict_line = _get_dict_line(lines)
     nu = []
@@ -220,12 +227,12 @@ def get_freq_i(path: str | Path = "OUTCAR") -> tuple[list[float], list[float]]:
     return nu, zpe
 
 
-def converge_or_not(path: str | Path = "OUTCAR") -> bool:
+def converge_or_not(path: Union[str, Path] = "OUTCAR") -> bool:
     lines = read_lines(path)
     return sum(1 for line in lines if LOOK_CONVERGE in line) >= 1
 
 
-def get_mag(path: str | Path = "OUTCAR") -> dict[int, list[float]]:
+def get_mag(path: Union[str, Path] = "OUTCAR") -> Dict[int, List[float]]:
     lines = read_lines(path)
     dict_line = _get_dict_line(lines)
     line_mag_start = dict_line[LOOK_MAGNETIZATION][-1] + 4
@@ -242,21 +249,21 @@ def get_mag(path: str | Path = "OUTCAR") -> dict[int, list[float]]:
     return dict_mag
 
 
-def get_vdw(path: str | Path = "OUTCAR") -> str:
+def get_vdw(path: Union[str, Path] = "OUTCAR") -> str:
     lines = read_lines(path)
     dict_line = _get_dict_line(lines)
     line_vdw = dict_line[LOOK_VDW][-1]
     return lines[line_vdw - 1].rstrip()
 
 
-def get_energy(path: str | Path = "OUTCAR") -> float:
+def get_energy(path: Union[str, Path] = "OUTCAR") -> float:
     lines = read_lines(path)
     dict_line = _get_dict_line(lines)
     line_energy = dict_line[LOOK_ENERGY][-1]
     return float(lines[line_energy].rstrip().split()[-1])
 
 
-def get_last_iteration(path: str | Path = "OUTCAR") -> tuple[int, int]:
+def get_last_iteration(path: Union[str, Path] = "OUTCAR") -> Tuple[int, int]:
     lines = read_lines(path)
     ionic_step = 0
     electronic_step = 0
@@ -269,11 +276,11 @@ def get_last_iteration(path: str | Path = "OUTCAR") -> tuple[int, int]:
     return ionic_step, electronic_step
 
 
-def has_electronic_convergence_marker(path: str | Path = "OUTCAR") -> bool:
+def has_electronic_convergence_marker(path: Union[str, Path] = "OUTCAR") -> bool:
     return any(LOOK_ELEC_CONVERGE in line for line in read_lines(path))
 
 
-def summarize_convergence(path: str | Path) -> ConvergenceSummary:
+def summarize_convergence(path: Union[str, Path]) -> ConvergenceSummary:
     resolved = _ensure_path(path)
     outcar_path = resolved / "OUTCAR" if resolved.is_dir() else resolved
     calc_dir = outcar_path.parent.resolve()
