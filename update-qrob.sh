@@ -6,7 +6,7 @@
 set -e
 
 # Configuration
-REPO_DIR="/home/qli/bin/qrob"
+REPO_DIR="$HOME/bin/qrob"
 LOG_FILE="${REPO_DIR}/.update-log.txt"
 REMOTE="origin"
 BRANCH="main"

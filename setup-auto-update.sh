@@ -3,7 +3,7 @@
 # Setup script to install daily auto-update cron job for qrob
 # Run this once on each device where you want daily updates
 
-REPO_DIR="/home/qli/bin/qrob"
+REPO_DIR="$HOME/bin/qrob"
 UPDATE_SCRIPT="$REPO_DIR/update-qrob.sh"
 CRON_FILE="/tmp/qrob-cron-$USER.tmp"
 
