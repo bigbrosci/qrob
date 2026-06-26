@@ -1,5 +1,5 @@
 ### Q_robot
-export ROBOT=$HOME/bin/q-rob
+export ROBOT=$HOME/bin/qrob
 for d in "$ROBOT"/actions_*; do
   [ -d "$d" ] || continue
   PATH="$PATH:$d"
