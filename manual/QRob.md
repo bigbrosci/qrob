@@ -7,8 +7,8 @@ This document keeps the QRob overview, setup notes, and pointers aligned with th
 
 ## 1. Goals and big picture
 
-- **What QRob does** – A VASP-focused helper robot: the `brain/` package encodes reusable parsers and parameter dictionaries, the `actions_py/` and `actions_bash/` folders expose concrete CLI helpers on top of that knowledge, and the `incar_gui/` / `geo_gui/` folders deliver lightweight web interfaces for composing inputs and editing structures.
-- **How it is organised** – Think of `q-rob` as a single workspace. The `brain/` module contains the logic (INCAR/KPOINTS/POSCAR utilities and dictionaries) and the `actions_*` layers are the commands you run every day. The `books/` and `friends/` folders hold supplemental data and third-party scripts, while the GUIs live under their own directories with dedicated docs.
+- **What QRob does** – A VASP-focused helper robot: the `brain/` package encodes reusable parsers and parameter dictionaries, the `actions_py/` and `actions_bash/` folders expose concrete CLI helpers on top of that knowledge, and `incar_gui/` delivers a lightweight web interface for composing inputs.
+- **How it is organised** – Think of `q-rob` as a single workspace. The `brain/` module contains the logic (INCAR/KPOINTS/POSCAR utilities and dictionaries) and the `actions_*` layers are the commands you run every day. The `books/` and `friends/` folders hold supplemental data and third-party scripts, while the GUI docs live alongside `incar_gui/`.
 - **Updates** – Add new parameters in `brain/`, extend CLI helpers in `actions_py/`, or drop new third-party helpers in `friends/`. Most customisations only need you to edit Python dictionaries or add a script, so you generally will not touch the old `Q_robot` naming anymore.
 
 ### 中文说明
@@ -68,7 +68,6 @@ export PYTHONPATH="$QROB_ROOT/brain${PYTHONPATH:+:$PYTHONPATH}"
 - `books/` – domain knowledge: pseudopotential tables, DFT-D2 parameters, lattice references, and sample structures under `books/structures/`. The `brain/data.py` module imports/extends this raw information.
 - `friends/` – third-party helpers we borrow when the work is already done (ASE helpers, VTST utilities, VASPKIT, etc.). Unpack the tarballs if needed and add the extracted `vtstscripts-1040/` (or whichever version you use) to your `PATH` before invoking those helpers.
 - `incar_gui/` – Flask-based INCAR generator with its own docs and requirements. See `incar_gui/INTRODUCTION.md` for bootstrapping and `task_config.json` for how the UI maps to `brain/incar` task dictionaries.
-- `geo_gui/` – Streamlit POSCAR viewer/editor with 3D controls, docs under `geo_gui/docs/`, and a comprehensive README. Run it with `streamlit run geo_gui/geo_gui.py` once your environment satisfies the dependencies listed in that README.
 - `manual/` – this overview plus supporting files (PowerPoint decks, PDF, figures, and the environment YAML). Keep `manual/qrob_env.yml` in sync with the dependencies you rely on.
 - `books/structures/` – example POSCARs and test fixtures used by the GUI or scripts.
 - `LICENSE`, `README` – remain as general project metadata.
@@ -109,12 +108,6 @@ export PYTHONPATH="$QROB_ROOT/brain${PYTHONPATH:+:$PYTHONPATH}"
 - Use ASE when you want the GUI to read your POSCAR for MAGMOM or DFT+U presets.
 - See `incar_gui/INTRODUCTION.md` for additional tips (multi-language notes, environment scripts, etc.).
 
-### GEO GUI (`geo_gui/`)
-- Install the dependencies: `streamlit`, `py3Dmol`, `numpy`, `ase` (optional) inside the `qrob` environment.
-- Launch `streamlit run geo_gui/geo_gui.py` from the repo root.
-- The app lets you load a POSCAR/CONTCAR, edit atoms, translate, delete, and save the result from the browser.
-- Read `geo_gui/README.md` for workflow summaries and `geo_gui/docs/` for step-by-step guidance.
-
 ## 7. Books, friends, and reports
 
 - `books/data` populates `brain/data.py` with useful dictionaries (lattice constants, DFT-D2 parameters, atomic masses, magnetisation targets, etc.). Edit `brain/data.py` to update or extend these reference tables.
@@ -129,14 +122,14 @@ export PYTHONPATH="$QROB_ROOT/brain${PYTHONPATH:+:$PYTHONPATH}"
 - Add new dictionaries in `brain/incar.py` (`standard_incar`, `tasks_incar`) when you need custom parameter blocks.
 - When developing new CLI helpers, place them in `actions_py/`, import the necessary `brain` modules, and document the usage within `actions_py/USAGE.md`.
 - Use `books` as your data source: convert new reference tables into Python dictionaries or JSON and load them through `brain/data.py`.
-- GUI customizations: edit `incar_gui/task_config.json` for new INCAR presets and tweak `geo_gui/docs/` for updated tutorials.
+- GUI customizations: edit `incar_gui/task_config.json` for new INCAR presets.
 
 ## 9. Resources and troubleshooting
 
 - Stay in sync with these files as you develop:
   - `manual/qrob_env.yml` for the Conda environment
   - `actions_py/USAGE.md` for Python helper documentation
-  - `incar_gui/INTRODUCTION.md` and `geo_gui/README.md` for GUI-specific tips
+  - `incar_gui/INTRODUCTION.md` for GUI-specific tips
 - Common issues:
   - **Script import errors** – ensure `PYTHONPATH` includes `brain/` (see the shell bootstrap snippet) and your current shell session loads the `qrob` environment.
   - **Missing dependencies** – install `ase`, `streamlit`, or other packages using `pip install` inside the `qrob` environment; the GUI docs list their extras.
