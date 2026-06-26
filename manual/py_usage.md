@@ -32,7 +32,7 @@ The `actions_py/` folder gathers the Python utilities that wrap the `brain/` kno
 - `swap_atoms.py` – unified atom-position swapping helper. Use `within` to swap two atoms inside one POSCAR, or `between` to copy positions from one file into another. Examples:
   - `swap_atoms.py within 3 8 -i POSCAR -o POSCAR_swapped`
   - `swap_atoms.py between -A POSCAR_A -B POSCAR_B -s 1 2 -f 5 6`
-- `switch_atoms.py` – switch the chemical symbols of two atoms in a single POSCAR: `python switch_atoms.py 8 Mo 20 Ni` swaps atom 8 to Mo and atom 20 to Ni.
+- `switch_atoms.py` – switch the chemical symbols of two atoms in a single POSCAR using 0-based indices: `python switch_atoms.py 7 Mo 19 Ni` swaps atom 7 to Mo and atom 19 to Ni.
 - `reformat.py` – convert coordinates between direct and cartesian; usage `reformat.py POSCAR d` (or `c`) and the output file is named `<input>_direct` (or `_cartesian`).
 - `sort_atoms.py` – unified atom-sorting helper. Use `--mode element` to group by element, `--mode z` to sort all atoms by Cartesian `z`, or `--mode z-within-element` to sort by `z` inside each element group. Examples:
   - `sort_atoms.py -i POSCAR --mode element --elements Fe C H O`
@@ -40,10 +40,10 @@ The `actions_py/` folder gathers the Python utilities that wrap the `brain/` kno
   - `sort_atoms.py -i POSCAR --mode z-within-element --elements Ni C H O`
 - `delete_atoms.py` – unified atom-deletion helper. It removes atoms by element, index/range, and can also delete H atoms beyond a cutoff from an anchor element. Examples:
   - `delete_atoms.py POSCAR C 0 5`
-  - `delete_atoms.py POSCAR --one-based C 1-3`
+  - `delete_atoms.py POSCAR C 0-2`
   - `delete_atoms.py POSCAR --delete-far-h --anchor-element N --distance-cutoff 1.5`
 - `fix_atoms.py` – unified selective-dynamics helper. It can select atoms by index/range, element, bottom layers, and Cartesian `z` cutoff in one command. Examples:
-  - `fix_atoms.py -i POSCAR --indices 1-6 --flags FFF`
+  - `fix_atoms.py -i POSCAR --indices 0-5 --flags FFF`
   - `fix_atoms.py -i POSCAR --elements C O --flags TTF`
   - `fix_atoms.py -i POSCAR --layers 2 --layer-threshold 0.5 --flags FFF`
   - `fix_atoms.py -i POSCAR --z-below 8.0 --flags FFF`
@@ -53,9 +53,11 @@ The `actions_py/` folder gathers the Python utilities that wrap the `brain/` kno
 ### Calculators & utilities
 
 - `get_incar.py` – unified INCAR entrypoint. Pass keywords like `freq`, `dftd2`, `ispin`, `neb`, or `--list` to build an `INCAR`; run it without arguments to launch the Flask GUI.
+- `check_converge.py` – inspect an `OUTCAR` or calculation directory, classify the job as converged or not, and append the result to `check_results.out`, `list_good.txt`, `list_bad.txt`, `list_rerun.txt`, and `list_scratch.txt`.
 - `get_abc.py` – reads `POSCAR`/`CONTCAR` and prints the lattice lengths, face areas, and volume.
 - `kp.py` – generates `KPOINTS` from `POSCAR` or hand-crafted meshes; run `kp.py` in a folder with `POSCAR` and let the default mesh (3×3×1) or existing file drive the output.
 - `pp.py` – build `POTCAR` fragments by reading the local `POSCAR`; just run `pp.py` and it will select the required potentials from `brain.potcar`.
+- `ncore.py` – add or update `NCORE` in `INCAR` for non-frequency jobs. Run `ncore.py` to add `NCORE = 8` when missing, or `ncore.py 16` to set a custom value.
 - `plot_dft.py` – lightweight front-end for shared DFT plotting helpers. Use `plot_dft.py --type linear -i data.csv` for linear regressions or `plot_dft.py --type neb --name JOBNAME` to visualize NEB energies. It supports `--dirs` to specify subdirectories.
 - `vtotav.py` – average a LOCPOT/CHGCAR file along a direction to produce one-dimensional curves; call `vtotav.py LOCPOT z`.
 - `dos_extract.py` – sum DOS for selected atoms/orbitals by reading `DOSCAR` and `POSCAR`; usage `dos_extract.py C s DOS_out.dat` (select atoms and output file name).
@@ -140,7 +142,8 @@ The local merge adds a larger legacy toolbox into `actions_py/`. Many of these s
 
 ### Electronic-structure setup
 
-- `convert_xml_to_ml_ab_input.py` – turn `vasprun.xml`-style outputs into machine-learning adsorption/binding input tables.
+- `xml2mlab.py` – convert one or more `vasprun.xml` files into an `ML_AB`-style training dataset for VASP on-the-fly machine learning.
+- `mlab_merge.py` – merge one or more existing `ML_AB` files into a single combined dataset.
 - `hseband.py` – prepare inputs for HSE band-structure calculations.
 - `hsekpoints.py` – generate HSE-friendly `KPOINTS`.
 - `id_to_cif.py` – fetch or convert a material identifier into a CIF file.

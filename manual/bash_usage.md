@@ -17,11 +17,6 @@ The `actions_bash/` folder collects quick shell wrappers for common VASP chores 
 - **Usage:** `bk.sh <file-or-dir>`
 - **Details:** Checks for existence, archives the target, and reports the archive path.
 
-### `check_converge.sh`
-- **Purpose:** Inspect `OUTCAR` to flag convergence (ionic/electronic) issues and log successes/failures.
-- **Usage:** `check_converge.sh OUTCAR_or_calc_dir`
-- **Details:** Accepts either an `OUTCAR` path or a calculation directory, distinguishes single-point vs relaxation jobs, appends summaries to `check_results.out`, and writes job names to `list_good.txt`, `list_bad.txt`, `list_rerun.txt`, and `list_scratch.txt`.
-
 ### `ej.sh`
 - **Purpose:** Enter the working directory of a Slurm job (uses `scontrol`).
 - **Usage:** `ej.sh <job-id>`
@@ -41,11 +36,6 @@ The `actions_bash/` folder collects quick shell wrappers for common VASP chores 
 - **Purpose:** Display the most recent energy for jobs in `list`, or scan subdirectories when `list` is absent.
 - **Usage:** `liste.sh`
 - **Details:** If a `list` file exists, it reads job names from there; otherwise it falls back to scanning subdirectories like the old `ta.sh`. It prints one tab-separated `<job> <energy>` line per matching `OUTCAR`.
-
-### `ncore.sh`
-- **Purpose:** Add or update `NCORE` in `INCAR` for non-frequency jobs.
-- **Usage:** `ncore.sh [num-cores]`
-- **Details:** Reads `INCAR` directly. If `IBRION` is 5–8, it makes no change. Otherwise it adds `NCORE = 8` when no `NCORE` line exists, or uses the provided argument value when you run `ncore.sh 16`.
 
 ### `rmall.sh`
 - **Purpose:** Unified cleanup helper for light or deep VASP file removal.

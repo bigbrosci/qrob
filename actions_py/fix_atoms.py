@@ -9,15 +9,14 @@ You can select atoms by any combination of:
 - Cartesian z cutoff
 
 Examples:
-  python fix_atoms.py -i POSCAR --indices 1-6 --flags FFF
+  python fix_atoms.py -i POSCAR --indices 0-5 --flags FFF
   python fix_atoms.py -i POSCAR --elements C O --flags TTF
   python fix_atoms.py -i POSCAR --layers 2 --layer-threshold 0.5 --flags FFF
   python fix_atoms.py -i POSCAR --z-below 8.0 --flags FFF
-  python fix_atoms.py -i POSCAR --indices 1-4 10 --elements Ru --z-below 7.5 --flags FFF
+  python fix_atoms.py -i POSCAR --indices 0-3 10 --elements Ru --z-below 7.5 --flags FFF
 
 Index notes:
-- By default, indices are 1-based to match older qrob usage.
-- Use --zero-based if you want 0-based indexing.
+- All atom indices are 0-based.
 """
 
 from __future__ import annotations
@@ -53,15 +52,14 @@ def detect_input_file(path: str | None) -> str:
     raise FileNotFoundError("Could not find POSCAR or CONTCAR in the current directory.")
 
 
-def parse_index_token(token: str, natoms: int, zero_based: bool) -> list[int]:
+def parse_index_token(token: str, natoms: int) -> list[int]:
     token = token.strip()
     if not token:
         return []
 
     single_match = re.fullmatch(r"\d+", token)
     if single_match:
-        raw = int(token)
-        idx = raw if zero_based else raw - 1
+        idx = int(token)
         return [idx] if 0 <= idx < natoms else []
 
     range_match = re.fullmatch(r"(\d*)-(\d*)", token)
@@ -72,12 +70,8 @@ def parse_index_token(token: str, natoms: int, zero_based: bool) -> list[int]:
     if not start_s and not end_s:
         raise ValueError("Range token '-' is ambiguous. Use forms like '1-4' or '5-'.")
 
-    if zero_based:
-        start = int(start_s) if start_s else 0
-        end = int(end_s) if end_s else natoms - 1
-    else:
-        start = int(start_s) - 1 if start_s else 0
-        end = int(end_s) - 1 if end_s else natoms - 1
+    start = int(start_s) if start_s else 0
+    end = int(end_s) if end_s else natoms - 1
 
     if start > end:
         start, end = end, start
@@ -86,10 +80,10 @@ def parse_index_token(token: str, natoms: int, zero_based: bool) -> list[int]:
     return list(range(start, end + 1))
 
 
-def parse_indices(tokens: list[str], natoms: int, zero_based: bool) -> list[int]:
+def parse_indices(tokens: list[str], natoms: int) -> list[int]:
     indices: list[int] = []
     for token in tokens:
-        indices.extend(parse_index_token(token, natoms, zero_based))
+        indices.extend(parse_index_token(token, natoms))
     return unique(indices)
 
 
@@ -134,10 +128,9 @@ def build_selection(args: argparse.Namespace, atoms) -> tuple[list[int], list[st
     reasons: list[str] = []
 
     if args.indices:
-        idxs = parse_indices(args.indices, natoms, args.zero_based)
+        idxs = parse_indices(args.indices, natoms)
         selected.extend(idxs)
-        basis = "0-based" if args.zero_based else "1-based"
-        reasons.append(f"indices ({basis}): {' '.join(args.indices)}")
+        reasons.append(f"indices (0-based): {' '.join(args.indices)}")
 
     if args.elements:
         idxs = parse_elements(args.elements, symbols)
@@ -170,12 +163,12 @@ def main(argv: list[str] | None = None) -> int:
         description="Fix or relax atoms in a VASP POSCAR by indices, elements, layers, and/or z cutoff.",
         epilog=(
             "Examples:\n"
-            "  python fix_atoms.py -i POSCAR --indices 1-6 --flags FFF\n"
+            "  python fix_atoms.py -i POSCAR --indices 0-5 --flags FFF\n"
             "  python fix_atoms.py -i POSCAR --elements C O --flags TTF\n"
             "  python fix_atoms.py -i POSCAR --layers 2 --layer-threshold 0.5 --flags FFF\n"
             "  python fix_atoms.py -i POSCAR --z-below 8.0 --flags FFF\n"
             "  python fix_atoms.py -i POSCAR --elements Ru --flags FFF\n"
-            "  python fix_atoms.py -i POSCAR --indices 0-5 --zero-based --flags TTT"
+            "  python fix_atoms.py -i POSCAR --indices 0-5 --flags TTT"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -193,12 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--indices",
         nargs="+",
-        help="Atom indices or ranges such as 1 3 5-8 12- (1-based by default)",
-    )
-    parser.add_argument(
-        "--zero-based",
-        action="store_true",
-        help="Interpret --indices as 0-based instead of 1-based",
+        help="Atom indices or ranges such as 0 3 5-8 12- (0-based)",
     )
     parser.add_argument(
         "--elements",
@@ -262,9 +250,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Output: {output}")
     print(f"Selected {len(selected)} atom(s) using: {', '.join(reasons)}")
     print(f"Applied selective-dynamics flags: {' '.join(flag.upper() for flag in args.flags)}")
-    if args.indices and not args.zero_based:
-        print("Index mode: 1-based")
-    elif args.indices:
+    if args.indices:
         print("Index mode: 0-based")
     return 0
 

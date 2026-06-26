@@ -8,6 +8,7 @@ import numpy as np
 import math 
 import ase 
 from ase.io import read, write
+from io import StringIO
 
 try:
     from .data import atomic_mass, dict_element
@@ -16,6 +17,24 @@ except ImportError:
 
 #### Part-0 Dictionaries already imported from data.py
 dict_element_2 = {v: k for k, v in dict_element.items()}
+
+
+def _atoms_from_lines(lines):
+    """Build an ASE Atoms object from POSCAR/CONTCAR text lines."""
+    return read(StringIO("".join(lines)), format='vasp')
+
+
+def _unique_symbols_in_order(symbols):
+    ordered = []
+    for symbol in symbols:
+        if symbol not in ordered:
+            ordered.append(symbol)
+    return ordered
+
+
+def _coord_start_line(lines):
+    is_direct, is_select = is_direct_or_not(lines)
+    return 9 if is_select else 8
 
 
 def get_dicts(lines):
@@ -30,9 +49,9 @@ def get_dicts(lines):
         name = k + '-' + str(i+1)
         dict_car1.update({name:ele_num[i]})
         list_i = []
-        for num in range(1, ele_num[i]+1):
-            num_ele +=1
+        for _ in range(ele_num[i]):
             list_i.append(num_ele)
+            num_ele +=1
         dict_car2.update({name:list_i})   
     return dict_car1, dict_car2
 
@@ -53,11 +72,11 @@ def read_car_ase(file_read):
     dict_2 = {}
     model = read(file_read, format='vasp')
     ele_list = model.get_chemical_symbols()
-    ele = list(set(ele_list))    
+    ele = _unique_symbols_in_order(ele_list)
     for num, i in enumerate(ele):
         key = i + '-' + str(num+1)
         num_i = ele_list.count(i)
-        list_i = [atom.index + 1 for atom in model if atom.symbol == i]
+        list_i = [atom.index for atom in model if atom.symbol == i]
         dict_1[key] = num_i 
         dict_2[key] = list_i
     return model, dict_1, dict_2    
@@ -82,11 +101,8 @@ def is_direct_or_not(lines):
 def get_vectors(lines):
     '''
     Get the lattice vectors to convert the direct to cartesian
-    '''   
-    la1 = np.array([ float(i) for i in lines[2].strip().split() ])
-    la2 = np.array([ float(i) for i in lines[3].strip().split() ])
-    la3 = np.array([ float(i) for i in lines[4].strip().split() ])
-    vector = np.transpose(np.array([la1, la2, la3]))
+    '''
+    vector = get_vectors_ase(_atoms_from_lines(lines))
     return vector
 
 def get_vectors_ase(model):
@@ -98,16 +114,7 @@ def get_abc(lines):
     '''
     Get the lattice information: length in x, y, and z directions, surface area and volume.
     '''
-    scale = float(lines[1].strip().split()[0]) 
-    la1 = np.array([ float(i) for i in lines[2].strip().split() ])
-    la2 = np.array([ float(i) for i in lines[3].strip().split() ])
-    la3 = np.array([ float(i) for i in lines[4].strip().split() ])
-    a_length = np.linalg.norm(la1) * scale 
-    b_length = np.linalg.norm(la2) * scale 
-    c_length = np.linalg.norm(la3) * scale
-    A = np.cross(la1, la2)[-1] # Surface area
-    V = np.dot(np.cross(la1, la2), la3) # Volume 
-    return a_length, b_length, c_length, A, V
+    return get_abc_ase(_atoms_from_lines(lines))
 
 def get_abc_ase(model):
     '''
@@ -124,34 +131,36 @@ def get_coordinate(lines, ele_indice):
     '''
     Get the atom xyz coordinate from the POSCAR which must be in cartesian format.
     '''
-    ele_indice = int(ele_indice) + 8
-    coordinate =  np.array([float(i) for i in lines[ele_indice].strip().split()[0:3]])
-    return coordinate
+    model = _atoms_from_lines(lines)
+    return get_coordinate_ase(model, ele_indice)
 
 def get_coordinate_ase(model,ele_indice):
     '''
     Get the atom xyz coordinate from the POSCAR which must be in cartesian format.
     '''
-    ele_indice = int(ele_indice) - 1  # ASE counts the index from 0
-    coordinate = model.get_positions()[ele_indice]
+    coordinate = model.get_positions()[int(ele_indice)]
     return coordinate
 
 def determinelayers(lines,threshold=0.5):
+    model = _atoms_from_lines(lines)
+    z = model.get_positions()[:, 2].tolist()
+    if not z:
+        return {}
+
     layerscount = {}
-    line_total = sum([int(i) for i in lines[6].strip().split()]) + 8
-    z = [float(lines[i].split()[2]) for i in range(9, line_total+1)]
     seq = sorted(z)
-    min = seq[0]
-    sets = [min]
-    for j in range(len(seq)):
-        if abs(seq[j]-min) >= threshold:
-            min = seq[j]
-            sets.append(min)        
-    for i in range(1,len(sets)+1):
-        layerscount[i] = []            
-        for k in range(len(z)):   
-            if abs(z[k]-sets[i-1]) <= threshold:
-                layerscount[i].append(k+1)
+    current = seq[0]
+    sets = [current]
+    for value in seq[1:]:
+        if abs(value - current) >= threshold:
+            current = value
+            sets.append(current)
+
+    for i in range(1, len(sets) + 1):
+        layerscount[i] = []
+        for k, z_value in enumerate(z):
+            if abs(z_value - sets[i - 1]) <= threshold:
+                layerscount[i].append(k)
     return layerscount
 
 def get_angle(u,v):
@@ -168,56 +177,24 @@ def get_distance(lines, a, b):
     a and b are the cartesian coordinates of atom_A and atom_B
     This functions solves the periodic probelmes by default.
     '''
-    la1, la2 = get_vectors(lines)[1:]
-    l_x = abs(la1[0])
-    l_y = abs(la2[1])
-
-    dx, dy, dz = a - b 
-    if dy > l_y / 2:
-        a[1] = a[1] - l_y
-        a[0] = a[0] - la2[0]
-    if dy <= -l_y /2: 
-        a[1] = a[1] + l_y 
-        a[0] = a[0] + la2[0]
-    
-    dx1, dy1, dz = a - b 
-    if dx1 > l_x / 2:
-        a[0] = a[0] - l_x 
-    if dx1 <= - l_x / 2: 
-        a[0] = a[0] + l_x 
-    distance = np.linalg.norm(a - b)
-
-    return distance 
+    model = _atoms_from_lines(lines)
+    delta_frac = np.linalg.solve(model.cell.array.T, np.asarray(a, dtype=float) - np.asarray(b, dtype=float))
+    delta_frac -= np.round(delta_frac)
+    delta = np.dot(delta_frac, model.cell.array)
+    return np.linalg.norm(delta)
 
 
 def get_distance_ase(model, a, b):
-    ''' Get the distance between atom a and b.  a and b are counted starting from 1.'''
-    atom_A = a - 1
-    atom_B = b - 1
-    distance = model.get_distance(atom_A, atom_B, mic=True)
+    ''' Get the distance between atom a and b using 0-based atom indices.'''
+    distance = model.get_distance(int(a), int(b), mic=True)
     return distance
 
 def get_intact_one_atom(lines, A, B):
-    '''atom B is the anchoring point'''
-    la1, la2 = get_vectors(lines)[1:]
-    l_x = abs(la1[0])
-    l_y = abs(la2[1])
-    a = get_coordinate(lines, A)
-    b = get_coordinate(lines, B)
-    dx, dy, dz = a - b 
-    if dy > l_y / 2:
-        a[1] = a[1] - l_y
-        a[0] = a[0] - la2[0]
-    if dy <= -l_y /2: 
-        a[1] = a[1] + l_y 
-        a[0] = a[0] + la2[0]
-    
-    dx1, dy1, dz = a - b 
-    if dx1 > l_x / 2:
-        a[0] = a[0] - l_x 
-    if dx1 <= - l_x / 2: 
-        a[0] = a[0] + l_x 
-    return a
+    '''atom B is the anchoring point; A and B are 0-based indices.'''
+    model = _atoms_from_lines(lines)
+    coord_b = model.get_positions()[int(B)]
+    delta = model.get_distance(int(B), int(A), mic=True, vector=True)
+    return coord_b + delta
     
 def get_intact_molecule(lines, atom_list, atom_B):
     coord_list = []
@@ -234,8 +211,9 @@ def get_distance_direct(a,b):
 def get_rotate_infor(lines, raw_infor):   
     '''Along the axis(atom_A, atom_B), rotate atoms by theta angle (in degree).
 Generall Command: rotate.py atom_A atom_B atom_1 atom_2 ... Angle    
-For example: To rotate the C H O atoms 15 degree along the axis formed by No.2 and No.10 atoms.
-rotate.py 2 10 C H O 15  
+For example: To rotate the C H O atoms 15 degree along the axis formed by atoms 2 and 10.
+rotate.py 2 10 C H O 15
+All atom indices are 0-based.
 This function is used to analyze the arguments: 2 10 C H O 15  in the command above.
 And return the basic information for rotations in the next step.
 '''
@@ -296,9 +274,10 @@ def get_atoms_pbc_rot(lines, infor):
     for A in atom_list:
         coord_A   = get_intact_one_atom(lines, A, B)   # solve the PBC problem
         coord_rot = list(rotate_one_atom(infor, coord_A))  # rotate atom_A 
-        ft        = lines[A + 8].rstrip().split()[3:]
+        coord_line = A + _coord_start_line(lines)
+        ft        = lines[coord_line].rstrip().split()[3:]
         line_ele  = ' '.join([str(i) for i in coord_rot]) + '  ' + '  '.join(ft) + '\n'
-        lines_pbc_rot[A + 8] = line_ele
+        lines_pbc_rot[coord_line] = line_ele
     return lines_pbc_rot 
 
 #def get_axis(point_1, point_2):
@@ -344,7 +323,7 @@ def get_atom_list(lines, atom_s):
                     if infor[1].isdigit():
                         n_end = int(i.split('-')[1])
                     else: # for the case: 18-, from 18 to the end.
-                        n_end = total_atoms
+                        n_end = total_atoms - 1
                     for m in range(n_start, n_end + 1):
                         atom_list_append(m)
                 else:
@@ -444,7 +423,7 @@ def delete_one_atom(lines, atom_delete):
 
     # Delete the coordinate part.
     '''If you use this function to delete namy atoms such as : 1 2 3 4 5, so delete the 5 first, then, 4, 3, 2, 1 '''
-    del lines_deleted[atom_delete + 8]
+    del lines_deleted[atom_delete + _coord_start_line(lines_deleted)]
     
     return lines_deleted
 
@@ -481,10 +460,11 @@ def add_one_atom(lines, atom_add):
 
 def switch_atoms(lines, atom_1, atom_2):
     lines_s = lines[:]
-    line_a1 = lines[atom_1+8]
-    line_a2 = lines[atom_2+8]
-    lines_s[atom_1+8] = line_a2
-    lines_s[atom_2+8] = line_a1
+    coord_start = _coord_start_line(lines)
+    line_a1 = lines[atom_1 + coord_start]
+    line_a2 = lines[atom_2 + coord_start]
+    lines_s[atom_1 + coord_start] = line_a2
+    lines_s[atom_2 + coord_start] = line_a1
     return lines_s
 
 def get_vector_T(lines, A1, A2, A3, A4):
@@ -504,12 +484,13 @@ def move_one_atom(lines, atom, T):
     return new_coord
 
 def shift_atoms(lines, atom_list, T):
+    coord_start = _coord_start_line(lines)
     for i in atom_list:
         print('Translate Atom %s-%s.' %(get_ele_name(lines, i), i))
         coord = list(str(k) for k in move_one_atom(lines, i, T))
-        ft = lines[i+8].rstrip().split()[3:]
+        ft = lines[i + coord_start].rstrip().split()[3:]
         line_ele = coord + ft  
-        lines[i + 8] = ' '.join(line_ele) + '\n' 
+        lines[i + coord_start] = ' '.join(line_ele) + '\n' 
     return lines
 
 def rotate_vector(axis, theta, v):
