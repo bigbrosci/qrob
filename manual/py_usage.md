@@ -32,7 +32,7 @@ The `actions_py/` folder gathers the Python utilities that wrap the `brain/` kno
 - `swap_atoms.py` – unified atom-position swapping helper. Use `within` to swap two atoms inside one POSCAR, or `between` to copy positions from one file into another. Examples:
   - `swap_atoms.py within 3 8 -i POSCAR -o POSCAR_swapped`
   - `swap_atoms.py between -A POSCAR_A -B POSCAR_B -s 1 2 -f 5 6`
-- `switch_atoms.py` – switch the chemical symbols of two atoms in a single POSCAR: `python switch_atoms.py 8 Mo 20 Ni` swaps atom 8 to Mo and atom 20 to Ni.
+- `switch_atoms.py` – switch the chemical symbols of two atoms in a single POSCAR using 0-based indices: `python switch_atoms.py 7 Mo 19 Ni` swaps atom 7 to Mo and atom 19 to Ni.
 - `reformat.py` – convert coordinates between direct and cartesian; usage `reformat.py POSCAR d` (or `c`) and the output file is named `<input>_direct` (or `_cartesian`).
 - `sort_atoms.py` – unified atom-sorting helper. Use `--mode element` to group by element, `--mode z` to sort all atoms by Cartesian `z`, or `--mode z-within-element` to sort by `z` inside each element group. Examples:
   - `sort_atoms.py -i POSCAR --mode element --elements Fe C H O`
@@ -40,10 +40,10 @@ The `actions_py/` folder gathers the Python utilities that wrap the `brain/` kno
   - `sort_atoms.py -i POSCAR --mode z-within-element --elements Ni C H O`
 - `delete_atoms.py` – unified atom-deletion helper. It removes atoms by element, index/range, and can also delete H atoms beyond a cutoff from an anchor element. Examples:
   - `delete_atoms.py POSCAR C 0 5`
-  - `delete_atoms.py POSCAR --one-based C 1-3`
+  - `delete_atoms.py POSCAR C 0-2`
   - `delete_atoms.py POSCAR --delete-far-h --anchor-element N --distance-cutoff 1.5`
 - `fix_atoms.py` – unified selective-dynamics helper. It can select atoms by index/range, element, bottom layers, and Cartesian `z` cutoff in one command. Examples:
-  - `fix_atoms.py -i POSCAR --indices 1-6 --flags FFF`
+  - `fix_atoms.py -i POSCAR --indices 0-5 --flags FFF`
   - `fix_atoms.py -i POSCAR --elements C O --flags TTF`
   - `fix_atoms.py -i POSCAR --layers 2 --layer-threshold 0.5 --flags FFF`
   - `fix_atoms.py -i POSCAR --z-below 8.0 --flags FFF`

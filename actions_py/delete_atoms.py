@@ -9,7 +9,7 @@ You can delete atoms by:
 
 Examples:
   python delete_atoms.py POSCAR C H O 0 2 5
-  python delete_atoms.py POSCAR --one-based C 1-3
+  python delete_atoms.py POSCAR C 0-2
   python delete_atoms.py POSCAR --delete-far-h --anchor-element N --distance-cutoff 1.5
 """
 
@@ -31,7 +31,7 @@ from ase.io import read, write
 from brain.poscar import parse_atom_targets
 
 
-def parse_index_range(token: str, natoms: int, one_based: bool) -> list[int]:
+def parse_index_range(token: str, natoms: int) -> list[int]:
     match = re.fullmatch(r"(\d*)-(\d*)", token)
     if not match:
         raise ValueError(f"Unrecognized range token: {token}")
@@ -40,12 +40,8 @@ def parse_index_range(token: str, natoms: int, one_based: bool) -> list[int]:
     if not start_s and not end_s:
         raise ValueError("Range token '-' is ambiguous.")
 
-    if one_based:
-        start = int(start_s) - 1 if start_s else 0
-        end = int(end_s) - 1 if end_s else natoms - 1
-    else:
-        start = int(start_s) if start_s else 0
-        end = int(end_s) if end_s else natoms - 1
+    start = int(start_s) if start_s else 0
+    end = int(end_s) if end_s else natoms - 1
 
     if start > end:
         start, end = end, start
@@ -54,28 +50,14 @@ def parse_index_range(token: str, natoms: int, one_based: bool) -> list[int]:
     return list(range(start, end + 1))
 
 
-def parse_targets(tokens: list[str], poscar_path: str, natoms: int, one_based: bool) -> set[int]:
+def parse_targets(tokens: list[str], poscar_path: str, natoms: int) -> set[int]:
     direct_tokens = [token for token in tokens if "-" not in token]
     selected = set(parse_atom_targets(direct_tokens, poscar_path)) if direct_tokens else set()
 
     for token in tokens:
         if "-" not in token:
             continue
-        selected.update(parse_index_range(token, natoms, one_based))
-
-    if one_based:
-        converted = set()
-        for token in direct_tokens:
-            if token.isdigit():
-                idx = int(token) - 1
-                if 0 <= idx < natoms:
-                    converted.add(idx)
-            elif not token.isdigit():
-                converted.update(parse_atom_targets([token], poscar_path))
-        for token in tokens:
-            if "-" in token:
-                converted.update(parse_index_range(token, natoms, one_based=True))
-        return converted
+        selected.update(parse_index_range(token, natoms))
 
     return selected
 
@@ -128,11 +110,6 @@ def main() -> int:
         help="Element symbols or atom indices/ranges to delete (0-based by default)",
     )
     parser.add_argument(
-        "--one-based",
-        action="store_true",
-        help="Interpret numeric indices/ranges as 1-based",
-    )
-    parser.add_argument(
         "--delete-far-h",
         action="store_true",
         help="Delete H atoms farther than the cutoff from the anchor element",
@@ -162,7 +139,7 @@ def main() -> int:
     atoms_to_delete: set[int] = set()
     if args.targets:
         try:
-            atoms_to_delete.update(parse_targets(args.targets, args.file, len(atoms), args.one_based))
+            atoms_to_delete.update(parse_targets(args.targets, args.file, len(atoms)))
         except Exception as exc:
             print(f"Error parsing targets: {exc}", file=sys.stderr)
             return 2

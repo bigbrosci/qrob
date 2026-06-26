@@ -35,7 +35,7 @@ ACTION_REGISTRY: Dict[str, ActionInfo] = {
         "brain_helpers": ["brain.poscar.parse_atom_targets"],
         "required_inputs": ["POSCAR"],
         "outputs": ["POSCAR_deleted", "atom_deleted"],
-        "notes": "Also supports 1-based ranges with --one-based and H-cleanup mode via --delete-far-h.",
+        "notes": "Uses 0-based indices by default and also supports H-cleanup mode via --delete-far-h.",
     },
     "fix_atoms": {
         "script": BASE_DIR / "fix_atoms.py",

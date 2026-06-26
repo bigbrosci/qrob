@@ -66,8 +66,9 @@ def main():
         print(f'Error parsing targets: {e}', file=sys.stderr)
         sys.exit(3)
 
-    # get per-atom magnetization from OUTCAR (keys are 1-based indices)
-    mag_dict = get_mag()
+    # get per-atom magnetization from OUTCAR, then remap to 0-based indices
+    mag_dict_raw = get_mag()
+    mag_dict = {idx1 - 1: values for idx1, values in mag_dict_raw.items()}
 
     # get element symbols from POSCAR/CONTCAR
     symbols = read_poscar_symbols(poscar_file)
@@ -84,11 +85,10 @@ def main():
         with open(out_csv, 'w', newline='') as fh:
             writer = csv.writer(fh)
             writer.writerow(header)
-            # iterate over atoms in POSCAR order (1-based)
+            # iterate over atoms in POSCAR order (0-based)
             for idx0, elem in enumerate(symbols):
-                idx1 = idx0 + 1
-                mags = mag_dict.get(idx1, [])
-                row = [idx1, elem] + mags + [''] * (maxlen - len(mags))
+                mags = mag_dict.get(idx0, [])
+                row = [idx0, elem] + mags + [''] * (maxlen - len(mags))
                 writer.writerow(row)
     except OSError as e:
         if e.errno == errno.EACCES:
@@ -99,19 +99,16 @@ def main():
     if selected0:
         print('Index,Element,Magnetizations')
         for i0 in selected0:
-            i1 = i0 + 1
             elem = symbols[i0] if 0 <= i0 < len(symbols) else 'N/A'
-            mags = mag_dict.get(i1, [])
-            print(f"{i1},{elem},{','.join(str(x) for x in mags)}")
+            mags = mag_dict.get(i0, [])
+            print(f"{i0},{elem},{','.join(str(x) for x in mags)}")
     else:
         print('Index,Element,Magnetizations')
         for idx0, elem in enumerate(symbols):
-            idx1 = idx0 + 1
-            mags = mag_dict.get(idx1, [])
-            print(f"{idx1},{elem},{','.join(str(x) for x in mags)}")
+            mags = mag_dict.get(idx0, [])
+            print(f"{idx0},{elem},{','.join(str(x) for x in mags)}")
 
 
 if __name__ == '__main__':
     main()
-
 

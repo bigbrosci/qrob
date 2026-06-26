@@ -9,7 +9,7 @@ Modes:
 Examples:
   python swap_atoms.py within 3 8
   python swap_atoms.py within 3 8 -i POSCAR -o POSCAR_swapped
-  python swap_atoms.py between -A POSCAR_A -B POSCAR_B -s 1 2 -f 5 6
+  python swap_atoms.py between -A POSCAR_A -B POSCAR_B -s 0 1 -f 4 5
 """
 
 import sys
@@ -33,9 +33,7 @@ def swap_within(input_file: str, output_file: str, atom_a: int, atom_b: int) -> 
     model = ase.io.read(input_file, format="vasp")
     positions = model.get_positions().copy()
 
-    idx_a = atom_a - 1
-    idx_b = atom_b - 1
-    positions[[idx_a, idx_b]] = positions[[idx_b, idx_a]]
+    positions[[atom_a, atom_b]] = positions[[atom_b, atom_a]]
 
     model.positions = positions
     ase.io.write(output_file, model, format="vasp", vasp5=True)
@@ -52,7 +50,7 @@ def swap_between(file_a: str, file_b: str, atoms_a: list[int], atoms_b: list[int
     positions_b = model_b.get_positions()
 
     for idx_a, idx_b in zip(atoms_a, atoms_b):
-        positions_a[idx_a - 1] = positions_b[idx_b - 1]
+        positions_a[idx_a] = positions_b[idx_b]
 
     model_a.positions = np.array(positions_a)
     ase.io.write(output_file, model_a, format="vasp", vasp5=True)
@@ -63,16 +61,16 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="mode", required=True)
 
     within = subparsers.add_parser("within", help="Swap two atom positions inside one structure")
-    within.add_argument("atom_a", type=int, help="First atom index (1-based)")
-    within.add_argument("atom_b", type=int, help="Second atom index (1-based)")
+    within.add_argument("atom_a", type=int, help="First atom index (0-based)")
+    within.add_argument("atom_b", type=int, help="Second atom index (0-based)")
     within.add_argument("-i", "--input", default="POSCAR", help="Input POSCAR file (default: POSCAR)")
     within.add_argument("-o", "--output", default="POSCAR_swapped", help="Output file (default: POSCAR_swapped)")
 
     between = subparsers.add_parser("between", help="Replace positions in file A using positions from file B")
     between.add_argument("-A", "--file-a", required=True, help="Atoms in file A will be replaced")
     between.add_argument("-B", "--file-b", required=True, help="Atoms in file B provide the replacement positions")
-    between.add_argument("-s", "--source", nargs="+", required=True, type=int, help="1-based atom indices in file A")
-    between.add_argument("-f", "--from-file-b", nargs="+", required=True, type=int, help="1-based atom indices in file B")
+    between.add_argument("-s", "--source", nargs="+", required=True, type=int, help="0-based atom indices in file A")
+    between.add_argument("-f", "--from-file-b", nargs="+", required=True, type=int, help="0-based atom indices in file B")
     between.add_argument("-o", "--output", default="POSCAR", help="Output file (default: POSCAR)")
 
     args = parser.parse_args()

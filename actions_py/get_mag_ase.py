@@ -15,7 +15,7 @@ Usage:
   python get_mag.py [--outcar OUTCAR] [--index IDX] [--output FILE] [--format text|json] [selection...]
 
 Selection tokens can be:
- - integer atom index (1-based)
+ - integer atom index (0-based)
  - range `start-end` or `start-` (to end)
  - element symbol like `C` to select all atoms of that element
 
@@ -36,12 +36,12 @@ except Exception:
 
 
 def parse_selection(tokens, symbols):
-    """Return sorted unique 1-based atom indices matching tokens."""
+    """Return sorted unique 0-based atom indices matching tokens."""
     n = len(symbols)
     sel = []
 
     def add_idx(i):
-        if 1 <= i <= n and i not in sel:
+        if 0 <= i < n and i not in sel:
             sel.append(i)
 
     for t in tokens:
@@ -57,13 +57,13 @@ def parse_selection(tokens, symbols):
         if m:
             start = int(m.group(1))
             end_s = m.group(2)
-            end = int(end_s) if end_s.isdigit() else n
+            end = int(end_s) if end_s.isdigit() else n - 1
             for i in range(start, end + 1):
                 add_idx(i)
             continue
         # element symbol (case-insensitive)
         if re.match(r'^[A-Za-z]+$', t):
-            for i, s in enumerate(symbols, start=1):
+            for i, s in enumerate(symbols):
                 if s.upper() == t.upper():
                     add_idx(i)
             continue
@@ -78,7 +78,7 @@ def parse_args(argv=None):
     p.add_argument('--index', '-i', type=int, default=-1, help='ASE read index for OUTCAR (default: -1, last)')
     p.add_argument('--output', '-o', default='Magnetization.txt', help='Output file path')
     p.add_argument('--format', choices=['text', 'json'], default='text', help='Output format')
-    p.add_argument('selection', nargs='*', help='Selection tokens: indices, ranges (e.g. 1-5, 3-), or element symbols (e.g. Fe)')
+    p.add_argument('selection', nargs='*', help='Selection tokens: 0-based indices, ranges (e.g. 0-4, 3-), or element symbols (e.g. Fe)')
     return p.parse_args(argv)
 
 
@@ -98,7 +98,7 @@ def main(argv=None):
     symbols = atoms.get_chemical_symbols()
 
     if not args.selection:
-        atom_list = list(range(1, len(symbols) + 1))
+        atom_list = list(range(len(symbols)))
     else:
         atom_list = parse_selection(args.selection, symbols)
 
@@ -118,7 +118,7 @@ def main(argv=None):
 
     # Prepare output structure
     out_dict = {}
-    for i, (sym, m) in enumerate(zip(symbols, magmoms), start=1):
+    for i, (sym, m) in enumerate(zip(symbols, magmoms)):
         out_dict[i] = {'element': sym, 'magmom': None if m is None else float(m)}
 
     # Print selected atoms
