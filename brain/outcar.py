@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 """Helpers for reading common information from VASP OUTCAR files."""
 
-from dataclasses import dataclass
 from pathlib import Path
 import re
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
+
+try:
+    from dataclasses import dataclass
+except ImportError:  # pragma: no cover
+    def dataclass(cls=None, **kwargs):
+        def wrap(cls):
+            return cls
+        if cls is None:
+            return wrap
+        return wrap(cls)
 
 
 LOOK_POT = "POTCAR"
