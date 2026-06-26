@@ -1,4 +1,4 @@
-export ROBOT="$HOME/bin/q-rob"
+export ROBOT="$HOME/bin/qrob"
 
 for d in "$ROBOT"/actions_*(N); do
     PATH="$PATH:$d"
