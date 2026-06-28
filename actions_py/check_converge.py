@@ -17,7 +17,7 @@ import argparse
 from brain.outcar import summarize_convergence
 
 
-RESULTS_FILE = "check_results.out"
+RESULTS_FILE = "check_results.txt"
 GOOD_LIST = "list_good.txt"
 BAD_LIST = "list_bad.txt"
 RERUN_LIST = "list_rerun.txt"
