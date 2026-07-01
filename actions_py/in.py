@@ -7,6 +7,7 @@ This script is kept as a lightweight compatibility wrapper around
 
 import sys
 from pathlib import Path
+from typing import List, Optional
 
 repo_root = Path(__file__).resolve().parent.parent
 if str(repo_root) not in sys.path:
@@ -19,7 +20,7 @@ ensure_repo_root()
 from brain import incar as brain_incar
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     tasks = brain_incar.parse_tasks(argv)
     try:
         brain_incar.build_incar(tasks)
