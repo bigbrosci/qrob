@@ -103,6 +103,13 @@ def apply_fix_below(selective: np.ndarray | None, sorted_positions: np.ndarray, 
     return selective
 
 
+def _make_fix_scaled(idx: int, mask: tuple[bool, bool, bool]):
+    try:
+        return FixScaled([idx], mask=mask)
+    except TypeError:
+        return FixScaled(a=[idx], mask=mask)
+
+
 def apply_selective_dynamics(atoms: Atoms, selective: np.ndarray | None) -> Atoms:
     if selective is None:
         return atoms.copy()
@@ -111,7 +118,7 @@ def apply_selective_dynamics(atoms: Atoms, selective: np.ndarray | None) -> Atom
     for idx in range(len(atoms)):
         mask = tuple(not bool(flag) for flag in selective[idx, :])
         if any(mask):
-            constraints.append(FixScaled([idx], mask=mask))
+            constraints.append(_make_fix_scaled(idx, mask))
 
     updated_atoms = atoms.copy()
     if constraints:
