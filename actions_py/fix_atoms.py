@@ -28,8 +28,9 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from ase.io import read
-from ase.io.vasp import write_vasp
+from ase import Atoms
+from ase.constraints import FixScaled
+from ase.io import read, write
 
 repo_root = Path(__file__).resolve().parent.parent
 if str(repo_root) not in sys.path:
@@ -158,6 +159,26 @@ def parse_flags(flags: str) -> list[bool]:
     return [char.upper() == "T" for char in flags]
 
 
+def apply_selective_dynamics(atoms: Atoms, selective: np.ndarray) -> Atoms:
+    if selective.shape != (len(atoms), 3):
+        raise ValueError("Selective-dynamics array must have shape (N, 3).")
+
+    # ASE's VASP writer understands selective dynamics through constraints.
+    # In this workflow, True means a T flag (free) and False means an F flag (fixed).
+    constraints = []
+    for idx in range(len(atoms)):
+        mask = tuple(not bool(flag) for flag in selective[idx, :])
+        if any(mask):
+            constraints.append(FixScaled([idx], mask=mask))
+
+    updated_atoms = atoms.copy()
+    if constraints:
+        updated_atoms.set_constraint(constraints)
+    else:
+        updated_atoms.set_constraint([])
+    return updated_atoms
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Fix or relax atoms in a VASP POSCAR by indices, elements, layers, and/or z cutoff.",
@@ -238,11 +259,12 @@ def main(argv: list[str] | None = None) -> int:
         selective[idx, :] = flag_values
 
     output = args.output if args.output else f"{infile}_fixed"
-    write_vasp(
+    output_atoms = apply_selective_dynamics(atoms, selective)
+    write(
         output,
-        atoms,
+        output_atoms,
+        format="vasp",
         direct=not args.cartesian,
-        selective_dynamics=selective,
         vasp5=True,
     )
 
