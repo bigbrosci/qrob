@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Utilities for reading and handling POTCAR files.
 
-This module expects POTCAR libraries under ~/bin/qrob/books/potpaw_PBE.<version>/
-and provides helpers to concatenate POTCARs and extract metadata.
+By default this module looks for POTCAR libraries under:
+- ``~/bin/qrob_private/books/potcars`` (preferred)
+- ``~/Dropbox/bin/qrob/books/potpaw_PBE.<version>`` (legacy fallback)
 """
 
 from __future__ import annotations
@@ -13,8 +14,32 @@ from typing import Dict, List, Tuple
 
 
 def _default_potcar_base() -> Path:
+    private_books = Path.home() / 'bin' / 'qrob_private' / 'books'
+    if private_books.exists():
+        return private_books
+
     home = Path.home()
     return home / 'Dropbox' / 'bin' / 'qrob' / 'books'
+
+
+def _resolve_potcar_library(version: str = '64') -> Path:
+    """Return the POTCAR library directory for the requested version.
+
+    Supported layouts:
+    - ``<base>/potcars/<ELEMENT>/POTCAR`` (preferred private repo layout)
+    - ``<base>/potpaw_PBE.<version>/<ELEMENT>/POTCAR`` (legacy layout)
+    """
+    base = _default_potcar_base()
+    candidates = [
+        base / 'potcars',
+        base / f'potpaw_PBE.{version}',
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(
+        f'No POTCAR library found under {base}. Expected either "potcars" or "potpaw_PBE.{version}".'
+    )
 
 
 def get_potcar_data(version: str = '64') -> Dict:
@@ -22,10 +47,11 @@ def get_potcar_data(version: str = '64') -> Dict:
 
     Returns an empty dict if the file does not exist.
     """
-    data_file = _default_potcar_base() / f'potpaw_PBE.{version}' / 'data_potcar'
+    library = _resolve_potcar_library(version)
+    data_file = library / 'data_potcar'
     # support both 'data_potcars' and older 'data_potcar'
     if not data_file.exists():
-        data_file = _default_potcar_base() / f'potpaw_PBE.{version}' / 'data_potcars'
+        data_file = library / 'data_potcars'
     if not data_file.exists():
         return {}
     text = data_file.read_text()
@@ -42,9 +68,7 @@ def concatenate(ele_list: List[str], version: str = '64', out_path: str = 'POTCA
     ``potpaw_PBE.<version>`` and for each element directory copies its POTCAR.
     It will try both ``ELEMENT`` and ``ELEMENT_sv`` directories.
     """
-    base = _default_potcar_base() / f'potpaw_PBE.{version}'
-    if not base.exists():
-        raise FileNotFoundError(f'POTPAW base path not found: {base}')
+    base = _resolve_potcar_library(version)
 
     out_file = Path(out_path)
     with out_file.open('w') as fout:
@@ -144,9 +168,7 @@ def get_multiple_potcar_infor(potcar_file: str) -> Tuple[Dict[str, Dict[str, str
 
 def get_potcars_infor(version: str) -> Dict[str, Dict[str, str]]:
     """Generate the data_potcars file for a given POTPAW version (e.g. '52','54','64')."""
-    base = _default_potcar_base() / f'potpaw_PBE.{version}'
-    if not base.exists():
-        raise FileNotFoundError(f'POTPAW folder not found: {base}')
+    base = _resolve_potcar_library(version)
     elements = [p.name for p in base.iterdir() if p.is_dir()]
     dict_potcars: Dict[str, Dict[str, str]] = {}
     for ele in elements:
@@ -198,4 +220,3 @@ def read_potcar(potcar_file: str) -> None:
         print('  '.join(r[i].ljust(widths[i]) for i in range(len(headers))))
     print('-' * len(header_line))
     print('\n' + '%' * 29 + ' Good Luck! ' + '%' * 29 + '\n')
-

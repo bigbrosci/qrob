@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 import sys
-from actions_py.bootstrap import ensure_repo_root
+from pathlib import Path
 
-ensure_repo_root()
 """Generate POTCAR files.
 
 Uses the `brain.potcar` helpers when available, falling back to a local
 `potcar` module for backward compatibility.
 """
-import sys
 import os
-from pathlib import Path
 
 # Ensure repo root is on sys.path so 'brain' package can be imported when
 # the script is executed from elsewhere (e.g. ~/bin in PATH).
 repo_root = Path(__file__).resolve().parents[1]
 if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
+
+from actions_py.bootstrap import ensure_repo_root
+
+ensure_repo_root()
 
 try:
     from brain.potcar import concatenate, read_potcar
