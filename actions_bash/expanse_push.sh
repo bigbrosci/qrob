@@ -10,7 +10,7 @@ fi
 LOCAL_data=$1  # can be either folder or file
 REMOTE_USER="qli9"
 FINAL_HOST="login01.expanse.sdsc.edu"
-REMOTE_DIR="/expanse/lustre/projects/del124/qli9/upload"
+REMOTE_DIR="/expanse/lustre/projects/mas138/qli9/upload"
 
 # Check if the local folder exists
 if [ ! -d "$LOCAL_data" ]; then
