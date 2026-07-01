@@ -10,7 +10,10 @@ from actions_py.bootstrap import ensure_repo_root
 
 ensure_repo_root()
 # -*- coding: utf-8 -*-
-from kpoints import *
+try:
+    from brain.kpoints import *
+except ImportError:
+    from kpoints import *
 import os
 import sys
 file_in  = 'POSCAR'
