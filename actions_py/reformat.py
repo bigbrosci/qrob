@@ -24,6 +24,57 @@ import argparse
 import ase
 from ase.io import read, write
 
+def _parse_counts(line):
+	tokens = line.split()
+	if not tokens:
+		return None
+
+	counts = []
+	for token in tokens:
+		try:
+			count = int(token)
+		except ValueError:
+			return None
+		if count < 0:
+			return None
+		counts.append(count)
+	return counts
+
+def _coordinate_block_bounds(lines):
+	for count_index in range(5, len(lines)):
+		counts = _parse_counts(lines[count_index])
+		if counts is None:
+			continue
+
+		mode_index = count_index + 1
+		if mode_index < len(lines) and lines[mode_index].strip().lower().startswith("s"):
+			mode_index += 1
+
+		if mode_index >= len(lines):
+			break
+
+		mode = lines[mode_index].strip().lower()
+		if mode and mode[0] in {"c", "d", "k"}:
+			start = mode_index + 1
+			end = start + sum(counts)
+			if end > len(lines):
+				raise ValueError("coordinate block is shorter than the atom count")
+			return start, end
+
+	raise ValueError("could not locate POSCAR coordinate block")
+
+def _strip_optional_vasp_tail(path):
+	with open(path, "r", encoding="utf-8") as fh:
+		lines = fh.readlines()
+
+	_, end = _coordinate_block_bounds(lines)
+	cleaned = lines[:end]
+	if cleaned and not cleaned[-1].endswith("\n"):
+		cleaned[-1] += "\n"
+
+	with open(path, "w", encoding="utf-8") as fh:
+		fh.writelines(cleaned)
+
 def main():
 	parser = argparse.ArgumentParser(description="Convert VASP POSCAR between direct and cartesian output formats")
 	parser.add_argument("file", help="Input file (e.g. POSCAR)")
@@ -84,6 +135,11 @@ def main():
 		if direct_flag:
 			print("Warning: ASE writer does not accept 'direct' keyword; writing default VASP format (may be cartesian).")
 		write(out_path, atoms, format="vasp", vasp5=True)
+
+	try:
+		_strip_optional_vasp_tail(out_path)
+	except Exception as e:
+		print(f"Warning: wrote '{out_path}', but could not remove optional VASP tail: {e}")
 
 	print(f"Wrote '{out_path}' ({'direct' if direct_flag else 'cartesian'})")
 
