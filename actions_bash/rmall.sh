@@ -18,7 +18,6 @@ light_patterns=(
     'p4vasp.log'
     'vasp*share*'
     'vasp*tes*'
-    'gam.*'
     'IB*'
     'EI*'
     'core*'
@@ -31,6 +30,7 @@ deep_patterns=(
     'AE*'
     'DOS*'
     'PRO*'
+    'POTCAR'
 )
 
 usage() {
