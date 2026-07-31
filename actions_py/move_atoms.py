@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 import sys
-from pathlib import Path
 
-repo_root = Path(__file__).resolve().parent.parent
-if str(repo_root) not in sys.path:
-    sys.path.insert(0, str(repo_root))
+from ase.io import read, write
 
-from actions_py.bootstrap import ensure_repo_root
 
-ensure_repo_root()
-# -*- coding: utf-8 -*-
-'''
+"""
 This script is used to copy the atoms (molecule) from file_from (template) to the file_to.
 You can use this script for the following cases:
 1) optimize the adsorbates on the smaller slab with 2 layers, and then move the atoms to the larger slab with 4 layers.    
@@ -22,39 +16,101 @@ Remember:
 The coordinates of the copied atoms need to be modified when the surface in two slabs are different.    
 add.py can do the similar thing.
 
-'''
+"""
 
-import sys 
-from brain.lattice import *
 
-if len(sys.argv[:]) <= 3:
-    print('Command: move_atoms.py file_from, file_to, atoms')
-    print('Example: to move C H and 12th atom from POSCAR1 to POSCAR2: \n')
-    print('Command: copy.py POSCAR1 POSCAR2 C H 12')
-    exit()
-else:     
-    script, file_from, file_to = sys.argv[0:3]
-    atom_s = sys.argv[3:]
+def get_atom_indices(atoms, selections):
+    """Expand element names and inclusive zero-based index ranges."""
+    indices = []
 
-lines_f = read_car(file_from)[0]
-atom_list = get_atom_list(lines_f, atom_s)
-#print(atom_list)
-ele_list, ele_num, line_atoms, coord_s = get_selected_lines(lines_f, atom_list)
-#
-lines_t = read_car(file_to)[0]
-total_lines_t = sum([int(i) for i in lines_t[6].strip().split()]) + 9
-#
-out_name = 'POSCAR_move'
-f_out = open(out_name, 'w')
-f_out.writelines(lines_t[0:5])  ## Write head part
-### Write element 
-f_out.write('%s  %s \n'  %(' '.join(lines_t[5].split()), ' '.join(ele_list)))  
-### Write Numbers 
-f_out.write('%s  %s \n'  %(' '.join(lines_t[6].split()), ' '.join([str(i) for i in ele_num])))  
-### Write Coordinates part of file_to
-f_out.writelines(lines_t[7: total_lines_t])
-f_out.writelines(line_atoms[:])
-#
-f_out.close()
+    def append(index):
+        if not 0 <= index < len(atoms):
+            raise ValueError(
+                f'Atom index {index} is outside the valid range 0-{len(atoms) - 1}.'
+            )
+        if index not in indices:
+            indices.append(index)
 
-print('\nThe output file is:\t%s' %(out_name))
+    symbols = atoms.get_chemical_symbols()
+    for selection in selections:
+        if selection.isdigit():
+            append(int(selection))
+        elif '-' in selection:
+            start_text, end_text = selection.split('-', 1)
+            if not start_text.isdigit() or (end_text and not end_text.isdigit()):
+                raise ValueError(f'Invalid atom range: {selection}')
+            start = int(start_text)
+            end = int(end_text) if end_text else len(atoms) - 1
+            if end < start:
+                raise ValueError(f'Invalid descending atom range: {selection}')
+            for index in range(start, end + 1):
+                append(index)
+        else:
+            for index, symbol in enumerate(symbols):
+                if symbol == selection:
+                    append(index)
+
+    if not indices:
+        raise ValueError('The atom selection did not match any atoms.')
+    return indices
+
+
+def group_indices_by_element(atoms, indices):
+    """Keep each copied element in one contiguous POSCAR block."""
+    symbols = atoms.get_chemical_symbols()
+    element_order = list(dict.fromkeys(symbols[index] for index in indices))
+    return [
+        index
+        for element in element_order
+        for index in indices
+        if symbols[index] == element
+    ]
+
+
+def copy_atoms_cartesian(source, destination, indices):
+    """Append a PBC-unwrapped selection using Cartesian positions in Angstrom."""
+    anchor = indices[0]
+    indices = group_indices_by_element(source, indices)
+    copied = source[indices]
+    copied.set_positions([
+        source.positions[anchor]
+        + source.get_distance(anchor, index, mic=True, vector=True)
+        for index in indices
+    ])
+
+    # Copied atoms are free to move, matching the previous T T T behavior.
+    copied.set_constraint()
+    destination.extend(copied)
+
+
+def main():
+    if len(sys.argv) <= 3:
+        print('Command: move_atoms.py file_from file_to atoms')
+        print('Example: move_atoms.py POSCAR1 POSCAR2 C H 12')
+        return 1
+
+    _, file_from, file_to, *selections = sys.argv
+    source = read(file_from, format='vasp')
+    destination = read(file_to, format='vasp')
+
+    indices = get_atom_indices(source, selections)
+    copy_atoms_cartesian(source, destination, indices)
+
+    out_name = 'POSCAR_move'
+    write(
+        out_name,
+        destination,
+        format='vasp',
+        direct=False,
+        sort=False,
+        vasp5=True,
+    )
+    print(f'\nThe output file is:\t{out_name}')
+    return 0
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except ValueError as error:
+        sys.exit(f'Error: {error}')
