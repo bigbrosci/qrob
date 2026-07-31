@@ -7,10 +7,8 @@ mode="${1:-light}"
 
 light_patterns=(
     '*.log'
-    'e.*'
-    'e_*'
-    'o.*'
-    'o_*'
+    '*.err'
+    '*.out'
     'err.*'
     'out.*'
     'REPORT*'
@@ -18,7 +16,6 @@ light_patterns=(
     'p4vasp.log'
     'vasp*share*'
     'vasp*tes*'
-    'gam.*'
     'IB*'
     'EI*'
     'core*'
@@ -31,6 +28,7 @@ deep_patterns=(
     'AE*'
     'DOS*'
     'PRO*'
+    'POTCAR'
 )
 
 usage() {
