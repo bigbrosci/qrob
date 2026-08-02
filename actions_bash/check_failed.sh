@@ -17,4 +17,3 @@ for log in "$script_dir"/Cu*/vasp.log; do
     rm -f -- "$log"
   fi
 done
-

@@ -7,10 +7,8 @@ mode="${1:-light}"
 
 light_patterns=(
     '*.log'
-    'e.*'
-    'e_*'
-    'o.*'
-    'o_*'
+    '*.err'
+    '*.out'
     'err.*'
     'out.*'
     'REPORT*'
