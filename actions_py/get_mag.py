@@ -1,4 +1,19 @@
 #!/usr/bin/env python3
+"""Extract per-atom total magnetic moments from OUTCAR.
+
+Usage:
+  python3 get_mag.py [targets...]
+
+Targets may be element symbols or 0-based atom indices. If omitted, the script
+prints all atoms. The CSV output always uses the workflow format:
+`index,element,magmom` with 0-based indices and total magnetic moment.
+"""
+
+from __future__ import annotations
+
+import csv
+import errno
+import os
 import sys
 from pathlib import Path
 
@@ -9,28 +24,9 @@ if str(repo_root) not in sys.path:
 from actions_py.bootstrap import ensure_repo_root
 
 ensure_repo_root()
-"""Extract per-atom magnetization from OUTCAR and print/save selections.
 
-Usage:
-  python3 get_mag.py [targets...]
-
-Targets are element symbols or 0-based atom indices. If omitted, the script
-writes the full magnetization CSV and prints all atoms.
-"""
-
-import sys
-import os
-import csv
-import errno
-
-# ensure repo root on sys.path so brain.poscar can be imported
-script_dir = os.path.dirname(os.path.realpath(__file__))
-repo_root = os.path.abspath(os.path.join(script_dir, '..'))
-if repo_root not in sys.path:
-    sys.path.insert(0, repo_root)
-
-from brain.poscar import parse_atom_targets
 from brain.outcar import get_mag
+from brain.poscar import parse_atom_targets
 
 try:
     from ase.io import read
@@ -38,77 +34,72 @@ except Exception:
     read = None
 
 
-def read_poscar_symbols(poscar_path='POSCAR'):
+def read_poscar_symbols(poscar_path: str) -> list[str]:
     if read is None:
-        raise RuntimeError('ASE is required to read POSCAR')
-    atoms = read(poscar_path, format='vasp')
+        raise RuntimeError("ASE is required to read POSCAR")
+    atoms = read(poscar_path, format="vasp")
     return atoms.get_chemical_symbols()
 
 
-def main():
+def total_magmom(mag_values) -> float:
+    """Sum the s/p/d magnetization components into a single moment."""
+    return float(sum(float(x) for x in mag_values))
+
+
+def write_csv(out_csv: str, symbols: list[str], mag_dict: dict[int, list[float]]) -> None:
+    with open(out_csv, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["index", "element", "magmom"])
+        for idx0, elem in enumerate(symbols):
+            mag_values = mag_dict.get(idx0 + 1, [])
+            writer.writerow([idx0, elem, total_magmom(mag_values)])
+
+
+def print_rows(indices: list[int], symbols: list[str], mag_dict: dict[int, list[float]]) -> None:
+    print("index,element,magmom")
+    for idx0 in indices:
+        elem = symbols[idx0] if 0 <= idx0 < len(symbols) else "N/A"
+        mag_values = mag_dict.get(idx0 + 1, [])
+        print(f"{idx0},{elem},{total_magmom(mag_values)}")
+
+
+def main() -> int:
     args = sys.argv[1:]
 
-    if not os.path.isfile('OUTCAR'):
-        print('No OUTCAR in current path. Bye!', file=sys.stderr)
-        sys.exit(1)
+    if not os.path.isfile("OUTCAR"):
+        print("No OUTCAR in current path. Bye!", file=sys.stderr)
+        return 1
 
-    if not os.path.isfile('POSCAR') and not os.path.isfile('CONTCAR'):
-        print('POSCAR or CONTCAR not found; required to map elements', file=sys.stderr)
-        sys.exit(2)
+    if not os.path.isfile("POSCAR") and not os.path.isfile("CONTCAR"):
+        print("POSCAR or CONTCAR not found; required to map elements", file=sys.stderr)
+        return 2
 
-    poscar_file = 'CONTCAR' if os.path.isfile('CONTCAR') else 'POSCAR'
+    poscar_file = "CONTCAR" if os.path.isfile("CONTCAR") else "POSCAR"
 
-    # parse atom selection (0-based indices)
-    targets = args
     try:
-        selected0 = parse_atom_targets(targets, poscar_file) if targets else []
-    except Exception as e:
-        print(f'Error parsing targets: {e}', file=sys.stderr)
-        sys.exit(3)
+        selected0 = parse_atom_targets(args, poscar_file) if args else []
+    except Exception as exc:
+        print(f"Error parsing targets: {exc}", file=sys.stderr)
+        return 3
 
-    # get per-atom magnetization from OUTCAR, then remap to 0-based indices
-    mag_dict_raw = get_mag()
-    mag_dict = {idx1 - 1: values for idx1, values in mag_dict_raw.items()}
-
-    # get element symbols from POSCAR/CONTCAR
+    mag_dict = get_mag()
     symbols = read_poscar_symbols(poscar_file)
 
-    # write full CSV for all atoms
-    out_csv = 'Magnetization.csv'
-    header = ['Index', 'Element']
-    # determine max length of mag entries
-    maxlen = max((len(v) for v in mag_dict.values()), default=0)
-    for i in range(maxlen):
-        header.append(f'Mag_{i}')
-
+    out_csv = "Magnetization.csv"
     try:
-        with open(out_csv, 'w', newline='') as fh:
-            writer = csv.writer(fh)
-            writer.writerow(header)
-            # iterate over atoms in POSCAR order (0-based)
-            for idx0, elem in enumerate(symbols):
-                mags = mag_dict.get(idx0, [])
-                row = [idx0, elem] + mags + [''] * (maxlen - len(mags))
-                writer.writerow(row)
-    except OSError as e:
-        if e.errno == errno.EACCES:
-            print(f'Permission denied writing {out_csv}', file=sys.stderr)
+        write_csv(out_csv, symbols, mag_dict)
+    except OSError as exc:
+        if exc.errno == errno.EACCES:
+            print(f"Permission denied writing {out_csv}", file=sys.stderr)
         raise
 
-    # print selected atoms if any, else print all
     if selected0:
-        print('Index,Element,Magnetizations')
-        for i0 in selected0:
-            elem = symbols[i0] if 0 <= i0 < len(symbols) else 'N/A'
-            mags = mag_dict.get(i0, [])
-            print(f"{i0},{elem},{','.join(str(x) for x in mags)}")
+        print_rows(selected0, symbols, mag_dict)
     else:
-        print('Index,Element,Magnetizations')
-        for idx0, elem in enumerate(symbols):
-            mags = mag_dict.get(idx0, [])
-            print(f"{idx0},{elem},{','.join(str(x) for x in mags)}")
+        print_rows(list(range(len(symbols))), symbols, mag_dict)
+
+    return 0
 
 
-if __name__ == '__main__':
-    main()
-
+if __name__ == "__main__":
+    raise SystemExit(main())
