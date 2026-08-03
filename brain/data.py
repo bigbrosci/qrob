@@ -75,7 +75,30 @@ j_value = {
 ## Database-derived initial moments. Keep this separate from the hand-tuned defaults
 ## above so the workflow can fall back cleanly when no database has been generated yet.
 # BEGIN MAG_VALUE_DATABASE
-mag_value_database = {}
+mag_value_database = {
+    'Ag': 0.0,
+    'Au': 0.0,
+    'Co': 1.4920536,
+    'Cr': 0.6811982758620689,
+    'Cu': 0.0012407407407407538,
+    'Fe': 2.525773972602741,
+    'Ga': 0.0,
+    'In': 0.0,
+    'Ir': 0.0,
+    'Mn': 2.82822510822511,
+    'Mo': -8.501118568232649e-05,
+    'Ni': 0.25791916167664664,
+    'O': 0.016657937806873968,
+    'Os': 0.005713740458015268,
+    'Pd': 0.0,
+    'Pt': 0.0,
+    'Re': -0.0009162895927601814,
+    'Rh': 0.015871794871794864,
+    'Ru': 0.06389696969696973,
+    'Sn': 0.0,
+    'W': 0.00011492281303602058,
+    'Zn': 0.0
+}
 # END MAG_VALUE_DATABASE
 
 ### SPIN & MAG
