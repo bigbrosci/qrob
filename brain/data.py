@@ -72,6 +72,12 @@ j_value = {
     'Ti': 1.0, 'Zn': 1.0, 'Sn': 1.0
 }
 
+## Database-derived initial moments. Keep this separate from the hand-tuned defaults
+## above so the workflow can fall back cleanly when no database has been generated yet.
+# BEGIN MAG_VALUE_DATABASE
+mag_value_database = {}
+# END MAG_VALUE_DATABASE
+
 ### SPIN & MAG
 mag_value = {
     'H': 0.0, 'He': 0.0,
