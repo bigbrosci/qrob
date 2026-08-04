@@ -53,7 +53,7 @@ The `actions_py/` folder gathers the Python utilities that wrap the `brain/` kno
 ### Calculators & utilities
 
 - `get_incar.py` – unified INCAR entrypoint. Pass keywords like `freq`, `dftd2`, `ispin`, `neb`, or `--list` to build an `INCAR`; run it without arguments to launch the Flask GUI.
-- `check_converge.py` – inspect an `OUTCAR` or calculation directory, classify the job as converged or not, and append the result to `check_results.out`, `list_good.txt`, `list_bad.txt`, `list_rerun.txt`, and `list_scratch.txt`.
+- `check_converge.py FOLDER` – first report whether the calculation directory is still present in Slurm. Running/pending jobs are left untouched; jobs no longer in the queue are classified from `OUTCAR` and the last 100 lines of `vasp.log`. Results are appended to `check_results.txt`, the good/bad and rerun/scratch lists, and killed jobs are also added to `failed_list.txt`. Use `--skip-slurm` only when intentionally checking output off-cluster.
 - `get_abc.py` – reads `POSCAR`/`CONTCAR` and prints the lattice lengths, face areas, and volume.
 - `kp.py` – generates `KPOINTS` from `POSCAR` or hand-crafted meshes; run `kp.py` in a folder with `POSCAR` and let the default mesh (3×3×1) or existing file drive the output.
 - `pp.py` – build `POTCAR` fragments by reading the local `POSCAR`; just run `pp.py` and it will select the required potentials from `brain.potcar`.

@@ -7,6 +7,11 @@ The `actions_bash/` folder collects quick shell wrappers for common VASP chores 
 
 ## Per-script usage
 
+### `autocheck.sh`
+- **Purpose:** Monitor one or more VASP folders through Slurm and automatically resubmit failed jobs every 30 minutes.
+- **Usage:** `nohup autocheck.sh job_list.txt > autocheck.log 2>&1 &` or `nohup autocheck.sh FOLDER [FOLDER ...] > autocheck.log 2>&1 &`
+- **Details:** In job-list mode, put one calculation folder on each line; relative paths are interpreted relative to the list file. Active jobs are left unchanged. Converged folders are removed atomically from `job_list.txt` and appended to `job_done.txt` in the same directory. Scratch failures run `sbatch run_vasp_single`; failures after multiple ionic steps first run `save_calculations.sh` and then submit. Use `--interval SECONDS` to change the period or `--once` for one check without waiting.
+
 ### `bader.sh`
 - **Purpose:** Produce charge-summing input before running the VTST `bader` utility.
 - **Usage:** `bader.sh`

@@ -9,9 +9,9 @@ import sys
 from difflib import SequenceMatcher
 
 try:
-    from .data import j_value, mag_value, u_value
+    from .data import j_value, mag_value, mag_value_database, u_value
 except ImportError:
-    from data import j_value, mag_value, u_value
+    from data import j_value, mag_value, mag_value_database, u_value
 
 try:
     from ase.io import read
@@ -154,8 +154,33 @@ def freq_update(freq):
     return standard_incar
 
 
+def magmom_total(magmom_str):
+    """Return the total magnetic moment implied by a MAGMOM string."""
+    total = 0.0
+    for token in magmom_str.split():
+        token = token.strip()
+        if not token:
+            continue
+        if '*' in token:
+            count_str, value_str = token.split('*', 1)
+            try:
+                total += float(count_str) * float(value_str)
+            except ValueError:
+                continue
+        else:
+            try:
+                total += float(token)
+            except ValueError:
+                continue
+    return total
+
+
 def spin_update(ispin):
-    """Compute MAGMOM from POSCAR symbols."""
+    """Compute MAGMOM from POSCAR symbols.
+
+    If the total magnetic moment implied by the generated MAGMOM string is
+    smaller than 1.0, the task will later be written as an ISPIN=1 fallback.
+    """
     if not ASE_AVAILABLE:
         print("ASE not installed—MAGMOM auto-calculation skipped.")
         return ispin
@@ -173,13 +198,19 @@ def spin_update(ispin):
 
     magmom_list = []
     for symbol, count in element_counts.items():
-        magmom_per_atom = mag_value.get(symbol, 0.0)
+        magmom_per_atom = mag_value_database.get(symbol, mag_value.get(symbol, 0.0))
+        magmom_per_atom = 1.3 * float(magmom_per_atom)
         magmom_list.append(f"{count}*{magmom_per_atom}")
 
     magmom_str = "  ".join(magmom_list)
-    ispin.update({'MAGMOM': magmom_str})
+    total_magmom = magmom_total(magmom_str)
+    ispin.update({'MAGMOM': magmom_str, '_magmom_total': total_magmom, '_low_magmom': total_magmom < 1.0})
 
     print(f"MAGMOM line updated: {magmom_str}")
+    if total_magmom < 1.0:
+        print(f"Total magnetic moment {total_magmom} < 1.0, will fall back to ISPIN = 1.")
+    else:
+        print(f"Total magnetic moment {total_magmom} >= 1.0, keep ISPIN = 2.")
     return ispin
 
 
@@ -234,8 +265,16 @@ def generate_incar(standard_incar, dict_tasks, dict_task_groups):
 
         for k_task, v_task in dict_task_groups.items():
             incar_out.write('\n%s \n' % (k_task.upper().replace('D_', '#')))
+            low_magmom = bool(v_task.get('_low_magmom'))
             for k, v in v_task.items():
-                incar_out.write('%s = %s \n' % (k, v))
+                if k.startswith('_'):
+                    continue
+                if low_magmom and k in ['ISPIN', 'MAGMOM']:
+                    incar_out.write('# %s = %s \n' % (k, v))
+                else:
+                    incar_out.write('%s = %s \n' % (k, v))
+            if low_magmom:
+                incar_out.write('ISPIN = 1 \n')
 
 
 def incar_alter(parameter, value):
