@@ -91,7 +91,7 @@ def slurm_jobs_for_directory(calc_dir: Path, user: str) -> list[tuple[str, str]]
 
 
 def log_was_killed(log_path: Path, tail_lines: int = 100) -> bool:
-    """Check the same tail region used by the legacy check_failed.sh."""
+    """Look for a Slurm kill marker near the end of the VASP log."""
     if not log_path.is_file():
         return False
     with log_path.open(encoding="utf-8", errors="ignore") as handle:
