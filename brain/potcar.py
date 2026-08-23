@@ -150,19 +150,16 @@ def get_multiple_potcar_infor(potcar_file: str) -> Tuple[Dict[str, Dict[str, str
     ele_list: List[str] = []
     for idx, line in enumerate(text):
         if 'TITEL' in line:
-            titel_line = line.rstrip()
-            # extract name from the TITEL line after '='; prefer last token
-            pot_name = None
-            if '=' in titel_line:
-                right = titel_line.split('=', 1)[1].strip().strip('"')
-                tokens = right.split()
-                if tokens:
-                    pot_name = tokens[-1]
+            info = get_potcar_infor(potcar_file, idx)
+            # TITEL is normally "TYPE NAME DATE".  Use NAME, not the final
+            # DATE token: different potentials often share a release date
+            # (for example C and O), so using DATE silently overwrites rows.
+            pot_name = info.get('NAME')
             if not pot_name:
-                parts = titel_line.split()
+                parts = line.split()
                 pot_name = parts[3] if len(parts) >= 4 else f'UNKNOWN_{idx}'
             ele_list.append(pot_name)
-            dict_potcars[pot_name] = get_potcar_infor(potcar_file, idx)
+            dict_potcars[pot_name] = info
     return dict_potcars, ele_list
 
 
