@@ -10,6 +10,11 @@ from functools import lru_cache
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
+try:
+    from lxml import etree as LXML_ET
+except ImportError:  # pragma: no cover - only needed for incomplete XML files
+    LXML_ET = None
+
 
 @dataclass
 class VasprunStep:
@@ -30,7 +35,16 @@ def _resolve_vasprun_path(path: str | Path = "vasprun.xml") -> Path:
 @lru_cache(maxsize=32)
 def _get_root(path: str | Path = "vasprun.xml") -> ET.Element:
     vasprun = _resolve_vasprun_path(path)
-    return ET.parse(vasprun).getroot()
+    try:
+        return ET.parse(vasprun).getroot()
+    except ET.ParseError:
+        # Interrupted VASP jobs commonly leave a truncated ``vasprun.xml``.
+        # The legacy XML-to-ML_AB converter accepted these files with lxml's
+        # recovery mode, so retain that useful behavior here.
+        if LXML_ET is None:
+            raise
+        parser = LXML_ET.XMLParser(recover=True)
+        return LXML_ET.parse(str(vasprun), parser).getroot()
 
 
 def _parse_varray(node: ET.Element | None) -> list[list[float]]:
@@ -133,7 +147,9 @@ def parse_calculation_steps(path: str | Path = "vasprun.xml") -> list[VasprunSte
 
     for calculation in root.findall(".//calculation"):
         energy = None
-        for name in ("e_wo_entrp", "e_fr_energy", "e_0_energy"):
+        # ``e_fr_energy`` is the free energy / TOTEN value emitted by the
+        # legacy ML_AB generator and used by VASP's ML training workflow.
+        for name in ("e_fr_energy", "e_wo_entrp", "e_0_energy"):
             energy_node = calculation.find(f"./energy/i[@name='{name}']")
             if energy_node is not None and energy_node.text:
                 energy = float(energy_node.text)
