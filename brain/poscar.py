@@ -5,15 +5,18 @@ Contains `parse_atom_targets` which converts CLI-style targets (element
 symbols or 0-based indices) into a list of 0-based atom indices.
 """
 
+from copy import deepcopy
 from io import StringIO
-from typing import List
+from pathlib import Path
+from typing import List, Sequence
 import sys
 import os
 
 try:
-    from ase.io import read
+    from ase.io import read, write
 except Exception:
     read = None
+    write = None
 
 
 def _read_poscar_symbols(poscar_path: str) -> List[str]:
@@ -92,6 +95,64 @@ def parse_atom_targets(targets: List[str], poscar_path: str) -> List[int]:
             uniq.append(i)
             seen.add(i)
     return uniq
+
+
+def convert_mol_to_poscar(
+    mol_file: Path | str,
+    slab_file: Path | str = Path("POSCAR_hollow"),
+    output_file: Path | str = Path("POSCAR_mol"),
+) -> None:
+    """Write a MOL structure as a POSCAR using a slab as its template."""
+    if read is None or write is None:
+        raise RuntimeError("ASE is required for MOL/POSCAR conversion")
+
+    molecule = read(mol_file, format="mol")
+    slab = read(slab_file, format="vasp")
+    if len(molecule) != len(slab):
+        raise ValueError(
+            f"Atom-count mismatch: {mol_file} has {len(molecule)} atoms, "
+            f"but {slab_file} has {len(slab)} atoms."
+        )
+    if molecule.get_chemical_symbols() != slab.get_chemical_symbols():
+        raise ValueError("The MOL and slab have different element ordering.")
+
+    molecule.set_cell(slab.cell)
+    molecule.set_pbc(slab.pbc)
+    molecule.set_constraint(deepcopy(slab.constraints))
+    write(output_file, molecule, format="vasp", direct=False, vasp5=True)
+
+
+def first_appearance_order(symbols: Sequence[str]) -> list[str]:
+    """Return unique chemical symbols in first-appearance order."""
+    return list(dict.fromkeys(symbols))
+
+
+def sort_poscar(
+    input_file: Path | str,
+    output_file: Path | str,
+    element_order: Sequence[str] | None = None,
+) -> None:
+    """Group POSCAR atoms by a requested or first-appearance element order.
+
+    Elements requested by the caller come first. Any elements present in the
+    structure but omitted from that list are appended in first-appearance
+    order.
+    """
+    if read is None or write is None:
+        raise RuntimeError("ASE is required to sort POSCAR files")
+
+    atoms = read(input_file, format="vasp")
+    symbols = atoms.get_chemical_symbols()
+    present_order = first_appearance_order(symbols)
+    requested = first_appearance_order(element_order or [])
+    element_order = requested + [
+        symbol for symbol in present_order if symbol not in requested
+    ]
+    sorted_indices = [
+        index for element in element_order
+        for index, symbol in enumerate(symbols) if symbol == element
+    ]
+    write(output_file, atoms[sorted_indices], format="vasp", direct=True, vasp5=True)
 
 
 if __name__ == '__main__':
