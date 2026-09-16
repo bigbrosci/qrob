@@ -9,6 +9,7 @@ Supported workflows:
 - optionally mark atoms below a z cutoff as fixed in the output
 
 Examples:
+  python sort_atoms.py POSCAR Cu C H O
   python sort_atoms.py -i POSCAR --mode element
   python sort_atoms.py -i POSCAR --mode element --elements Fe C H O
   python sort_atoms.py -i POSCAR --mode z
@@ -133,6 +134,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Sort atoms in a VASP POSCAR by element order and/or Cartesian z.",
         epilog=(
             "Examples:\n"
+            "  python sort_atoms.py POSCAR Cu C H O\n"
             "  python sort_atoms.py -i POSCAR --mode element\n"
             "  python sort_atoms.py -i POSCAR --mode element --elements Fe C H O\n"
             "  python sort_atoms.py -i POSCAR --mode z\n"
@@ -141,6 +143,8 @@ def main(argv: list[str] | None = None) -> int:
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
+    parser.add_argument("positional_input", nargs="?", metavar="FILE", help="Input POSCAR/CONTCAR file")
+    parser.add_argument("positional_elements", nargs="*", metavar="ELEMENT", help="Custom element order")
     parser.add_argument("-i", "--input", help="Input POSCAR/CONTCAR file (default: POSCAR or CONTCAR in cwd)")
     parser.add_argument("-o", "--output", help="Output filename (default: <input>_sorted)")
     parser.add_argument(
@@ -165,6 +169,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Write Cartesian coordinates instead of direct coordinates",
     )
     args = parser.parse_args(argv)
+    if args.positional_input is not None:
+        if args.input is not None:
+            parser.error("Specify the input file either positionally or with -i, not both.")
+        args.input = args.positional_input
+    if args.positional_elements:
+        if args.elements is not None:
+            parser.error("Specify the element order either positionally or with --elements, not both.")
+        args.elements = args.positional_elements
 
     infile = detect_input_file(args.input)
     atoms = read(infile, format="vasp")
