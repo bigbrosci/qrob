@@ -27,23 +27,8 @@ model_positions = model.get_positions()
 print('Read POSCAR DONE >>>\t')
 #Read OUTCAR and get the line number of the largest imaginary frequency
 print('Read OUTCAR >>>\t')
-l_position = 0
-with open('OUTCAR') as f_in:
-    lines = f_in.readlines()
-    wave_num = 0.0
-    for num, line in enumerate(lines):
-        if 'f/i' in line:
-            wave_tem = float(line.rstrip().split()[6])
-            if wave_tem > wave_num:
-                wave_num = wave_tem 
-                l_position = num+2         
-      
-vib_lines = lines[l_position:l_position+len(model)]
-vib_dis = []
-for line in vib_lines:
-    infor = [float(i) for i in line.rstrip().split()[3:]]
-    vib_dis.append(infor)
-vib_dis = np.array(vib_dis)
+from brain.outcar import get_imaginary_mode
+vib_dis = np.array(get_imaginary_mode('OUTCAR', len(model)), dtype=float)
 
 print('Read OUTCAR DONE >>>\t')         
 

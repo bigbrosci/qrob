@@ -19,9 +19,9 @@ from ase.data import atomic_masses, atomic_numbers
 from ase.io import read as ase_read
 
 try:
-    from .vasprun import get_atom_symbols, parse_calculation_steps
+    from .vasprun import get_atom_symbols, iter_calculation_steps
 except ImportError:
-    from vasprun import get_atom_symbols, parse_calculation_steps
+    from vasprun import get_atom_symbols, iter_calculation_steps
 
 
 BLOCK_SEP_0 = "**************************************************\n"
@@ -233,14 +233,11 @@ def parse_vasprun_to_mlab_configurations(vasprun_path: str | Path, ctifor: float
         raise ValueError(f"Could not read atom symbols from {vasprun}")
 
     ordered_symbols, counts = _ordered_symbols_and_counts(atom_symbols_all)
-    steps = parse_calculation_steps(vasprun)
-    complete_steps = [step for step in steps if step.energy is not None and step.forces and len(step.stress) == 6]
-
-    if not complete_steps:
-        raise ValueError(f"No complete configurations could be read from {vasprun}")
-
+    steps = iter_calculation_steps(vasprun)
     configurations: list[MLABConfiguration] = []
-    for step in complete_steps:
+    for step in steps:
+        if step.energy is None or not step.forces or len(step.stress) != 6:
+            continue
         configurations.append(
             MLABConfiguration(
                 system_name=system_name,
@@ -254,6 +251,8 @@ def parse_vasprun_to_mlab_configurations(vasprun_path: str | Path, ctifor: float
                 ctifor=ctifor,
             )
         )
+    if not configurations:
+        raise ValueError(f"No complete configurations could be read from {vasprun}")
     return configurations
 
 
@@ -297,19 +296,19 @@ def parse_outcar_to_mlab_configuration(
         raise ValueError(f"Atom symbols and counts do not match in {contcar}")
 
     atoms = ase_read(f"{outcar}@-1")
-    outcar_lines = outcar.read_text(encoding="utf-8", errors="ignore").splitlines()
-    energies = []
-    stresses = []
-    for line in outcar_lines:
-        if "free  energy   TOTEN" in line:
-            energies.append(float(line.split()[4]))
+    try:
+        from .outcar import get_toten, reverse_lines
+    except ImportError:
+        from outcar import get_toten, reverse_lines
+    energy = get_toten(outcar)
+    stress = None
+    for line in reverse_lines(outcar):
         if "in kB" in line:
             values = line.split()[2:]
             if len(values) >= 6:
-                stresses.append([float(value) for value in values[:6]])
-    if not energies:
-        raise ValueError(f"No TOTEN value found in {outcar}")
-    if not stresses:
+                stress = [float(value) for value in values[:6]]
+                break
+    if stress is None:
         raise ValueError(f"No stress tensor in kB found in {outcar}")
 
     return MLABConfiguration(
@@ -318,9 +317,9 @@ def parse_outcar_to_mlab_configuration(
         atom_counts=atom_counts,
         cell_vectors=lattice,
         atom_positions=atoms.get_positions().tolist(),
-        total_energy=energies[-1],
+        total_energy=energy,
         atom_forces=atoms.get_forces(apply_constraint=False).tolist(),
-        stress_kbar=stresses[-1],
+        stress_kbar=stress,
         ctifor=ctifor,
     )
 

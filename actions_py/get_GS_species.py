@@ -9,6 +9,11 @@ import re
 import sys
 from pathlib import Path
 
+repo_root = Path(__file__).resolve().parent.parent
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
+from brain.outcar import get_energy, iter_lines
+
 from ase.io import read
 from ase.thermochemistry import HarmonicThermo, IdealGasThermo
 from scipy.constants import Avogadro, c, e, h
@@ -36,23 +41,8 @@ WAVENUMBER_RE = re.compile(r"([-+0-9.]+)\s+cm-1")
 
 
 def dft_energy(outcar: Path) -> float:
-    """Return the final sigma->0 energy, falling back to the final TOTEN."""
-    sigma_energy = None
-    toten = None
-    with outcar.open(errors="replace") as handle:
-        for line in handle:
-            match = ENERGY_RE.search(line)
-            if match:
-                sigma_energy = float(match.group(1))
-            match = TOTEN_RE.search(line)
-            if match:
-                toten = float(match.group(1))
-
-    if sigma_energy is not None:
-        return sigma_energy
-    if toten is not None:
-        return toten
-    raise ValueError(f"no DFT energy found in {outcar}")
+    """Return final sigma->0 energy, falling back to final TOTEN."""
+    return get_energy(outcar, fallback_toten=True)
 
 
 def frequency_outcar(calc_dir: Path) -> Path:
@@ -66,7 +56,7 @@ def frequency_outcar(calc_dir: Path) -> Path:
             # The ordinary OUTCAR is useful only if it actually has frequencies.
             if candidate.name != "OUTCAR" or candidate.parent.name == "freq":
                 return candidate
-            if " f  =" in candidate.read_text(errors="replace"):
+            if any(" f  =" in line for line in iter_lines(candidate)):
                 return candidate
     raise FileNotFoundError(f"no vibrational frequencies found in {calc_dir}")
 

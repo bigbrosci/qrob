@@ -131,54 +131,82 @@ def get_born_charges(path: str | Path = "vasprun.xml") -> list[list[list[float]]
 
 
 def get_atom_symbols(path: str | Path = "vasprun.xml") -> list[str]:
-    root = _get_root(path)
-    atom_nodes = root.findall(".//atominfo/array[@name='atoms']/set/rc")
-    symbols: list[str] = []
-    for atom in atom_nodes:
-        symbol_node = atom.find("./c")
-        if symbol_node is not None and symbol_node.text:
-            symbols.append(symbol_node.text.strip())
-    return symbols
+    for node in _iter_top_level(path):
+        if node.tag != "atominfo":
+            continue
+        symbols = []
+        for atom in node.findall("./array[@name='atoms']/set/rc"):
+            symbol = atom.find("./c")
+            if symbol is not None and symbol.text:
+                symbols.append(symbol.text.strip())
+        return symbols
+    return []
+
+
+def _calculation_step(calculation) -> VasprunStep | None:
+    energy = None
+    # ML_AB uses the free energy / TOTEN value, preserving the historical order.
+    for name in ("e_fr_energy", "e_wo_entrp", "e_0_energy"):
+        energy_node = calculation.find(f"./energy/i[@name='{name}']")
+        if energy_node is not None and energy_node.text:
+            energy = float(energy_node.text)
+            break
+    structure = calculation.find("./structure")
+    lattice = _parse_varray(None if structure is None else structure.find("./crystal/varray[@name='basis']"))
+    positions = _parse_varray(None if structure is None else structure.find("./varray[@name='positions']"))
+    forces = _parse_varray(calculation.find("./varray[@name='forces']"))
+    stress = _parse_stress_components(_parse_varray(calculation.find("./varray[@name='stress']")))
+    if lattice and positions:
+        return VasprunStep(lattice, positions, forces, stress, energy)
+    return None
+
+
+def _iter_top_level(path: str | Path = "vasprun.xml"):
+    """Yield top-level elements, releasing each before reading the next.
+
+    As with the full-tree reader, lxml recovery accepts interrupted output when
+    lxml is available. No persistent cache is used for a growing trajectory.
+    """
+    vasprun = _resolve_vasprun_path(path)
+    with vasprun.open("rb") as handle:
+        if LXML_ET is not None:
+            context = LXML_ET.iterparse(handle, events=("start", "end"), recover=True)
+        else:
+            context = ET.iterparse(handle, events=("start", "end"))
+        root = None
+        depth = 0
+        for event, node in context:
+            if event == "start":
+                depth += 1
+                if root is None:
+                    root = node
+                continue
+            if depth == 2:
+                yield node
+                root.remove(node)
+                node.clear()
+            depth -= 1
+
+
+def iter_calculation_steps(path: str | Path = "vasprun.xml"):
+    """Yield ionic steps without retaining the full XML tree."""
+    for node in _iter_top_level(path):
+        if node.tag == "calculation":
+            step = _calculation_step(node)
+            if step is not None:
+                yield step
 
 
 def parse_calculation_steps(path: str | Path = "vasprun.xml") -> list[VasprunStep]:
-    root = _get_root(path)
-    steps: list[VasprunStep] = []
-
-    for calculation in root.findall(".//calculation"):
-        energy = None
-        # ``e_fr_energy`` is the free energy / TOTEN value emitted by the
-        # legacy ML_AB generator and used by VASP's ML training workflow.
-        for name in ("e_fr_energy", "e_wo_entrp", "e_0_energy"):
-            energy_node = calculation.find(f"./energy/i[@name='{name}']")
-            if energy_node is not None and energy_node.text:
-                energy = float(energy_node.text)
-                break
-
-        structure = calculation.find("./structure")
-        lattice = _parse_varray(None if structure is None else structure.find("./crystal/varray[@name='basis']"))
-        positions = _parse_varray(None if structure is None else structure.find("./varray[@name='positions']"))
-        forces = _parse_varray(calculation.find("./varray[@name='forces']"))
-        stress_matrix = _parse_varray(calculation.find("./varray[@name='stress']"))
-        stress = _parse_stress_components(stress_matrix)
-
-        if lattice and positions:
-            steps.append(
-                VasprunStep(
-                    lattice=lattice,
-                    positions=positions,
-                    forces=forces,
-                    stress=stress,
-                    energy=energy,
-                )
-            )
-
-    return steps
+    """Return all ionic steps without retaining the XML tree as a second copy."""
+    return list(iter_calculation_steps(path))
 
 
 def get_final_step(path: str | Path = "vasprun.xml") -> VasprunStep | None:
-    steps = parse_calculation_steps(path)
-    return steps[-1] if steps else None
+    final = None
+    for step in iter_calculation_steps(path):
+        final = step
+    return final
 
 
 def get_final_energy(path: str | Path = "vasprun.xml") -> float | None:

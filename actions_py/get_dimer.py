@@ -40,39 +40,23 @@ from sys import exit
 
 model = read('POSCAR_relax') ### POSCAR_relax is the POSCAR before freq calculations, that means the some atoms are not fixed.
 model_positions = model.get_positions()
-model.write('POSCAR_dimer', vasp5=True)
 
 # print(model_positions)
 # print(len(model))
 
-l_start = 0 # the number of line which contains  'Eigenvectors after division by SQRT(mass)' 
-with open('OUTCAR') as f_in:
-    lines = f_in.readlines()
-    for num, line in enumerate(lines):
-        if 'Eigenvectors after division by SQRT(mass)' in line:
-            l_start = num
+from brain.outcar import get_imaginary_mode
+try:
+    vib_dis = get_imaginary_mode('OUTCAR', len(model), mass_weighted=True)
+except ValueError as exc:
+    print(f"{exc}. Check frequency results; NWRITE must be 3.")
+    sys.exit(1)
 
-if l_start == 0:
-    print('''Check Frequency results and then rerun this script.\n**Remember**: NWRITE must be 3. BYEBYE! ''' )
-    exit()
-    
-freq_infor_block = lines[l_start:]        
-l_position = 0
-wave_num = 0.0
-for num, line in enumerate(freq_infor_block): 
-        if 'f/i' in line:           
-            wave_tem = float(line.rstrip().split()[6])
-            if wave_tem > wave_num:
-                wave_num = wave_tem  
-                l_position = num+2
-
+model.write('POSCAR_dimer', vasp5=True)
 pos_dimer = open('POSCAR_dimer', 'a')
 pos_dimer.write('  ! Dimer Axis Block\n')
 
-vib_lines = freq_infor_block[l_position:l_position+len(model)]
-for line in vib_lines:
-    infor = line.rstrip().split()[3:]
-    pos_dimer.write(' '.join(infor)+'\n')
+for displacement in vib_dis:
+    pos_dimer.write(' '.join(displacement) + '\n')
 
 pos_dimer.close()
 print('''

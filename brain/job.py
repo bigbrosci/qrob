@@ -115,7 +115,7 @@ def converge_and_finish(path: str = ".") -> list[str]:
         return ["No", "No"]
 
     summary = summarize_convergence(outcar)
-    finished = "Yes" if any("Voluntary context" in line for line in _read_text_lines(outcar)) else "No"
+    finished = "Yes" if summary.finished else "No"
     return ["Yes" if summary.converged else "No", finished]
 
 

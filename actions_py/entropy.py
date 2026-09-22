@@ -34,9 +34,6 @@ import math
 from outcar import *
 from scipy import constants as con
 
-f = open('OUTCAR')
-lines_o = f.readlines()
-f.close()
 
 #if len(sys.argv) == 2:
 #    Tem = float(sys.argv[1])  # Temperature

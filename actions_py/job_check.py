@@ -22,6 +22,7 @@ Change the user_id from "qli" to your own in the get_job_list() function
 """
 import subprocess
 from subprocess import Popen, PIPE
+from brain.outcar import tail_lines
 import os
 import sys 
 
@@ -104,21 +105,20 @@ def check_jobs():
             outcar = job_dir + '/OUTCAR'
             contcar = job_dir + '/CONTCAR'
             if os.path.exists(outcar):
-                with open(outcar) as f_out:
-                    if 'Voluntary'  in f_out.readlines()[-1]:
-                        jd.write('%s,%s\n' %(job_id, job_dir))
-                        subprocess.call(['sed -i "/' + job_id + '/d" ' + id_file], shell = True)
-                        print('%s is done\n \t %s' %(job_id,job_dir))
+                if 'Voluntary'  in ''.join(tail_lines(outcar, 1)):
+                    jd.write('%s,%s\n' %(job_id, job_dir))
+                    subprocess.call(['sed -i "/' + job_id + '/d" ' + id_file], shell = True)
+                    print('%s is done\n \t %s' %(job_id,job_dir))
+                else:
+                    if os.path.getsize(contcar) == 0: # CONTCAR is empty, job is killed in less than 1 ionic step
+                        subprocess.call(['qsub run_vasp_dar'], shell = True)
                     else:
-                        if os.path.getsize(contcar) == 0: # CONTCAR is empty, job is killed in less than 1 ionic step
-                            subprocess.call(['qsub run_vasp_dar'], shell = True)
-                        else:
-                            subprocess.call(['save_calculations.sh  && qsub run_vasp_dar'], shell = True)
+                        subprocess.call(['save_calculations.sh  && qsub run_vasp_dar'], shell = True)
             else: 
                 outcar = job_dir + '4_freq/OUTCAR'
                 
                 if os.path.exists(outcar):
-                    if 'Voluntary'  in f_out.readlines()[-1]:
+                    if 'Voluntary'  in ''.join(tail_lines(outcar, 1)):
                         jd.write('%s,%s\n' %(job_id, job_dir))
                         subprocess.call(['sed -i "/' + job_id + '/d" ' + id_file], shell = True)
                         print('%s is done\n \t %s' %(job_id,job_dir))

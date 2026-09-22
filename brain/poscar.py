@@ -43,12 +43,13 @@ def _read_poscar_symbols(poscar_path: str) -> List[str]:
         return atoms.get_chemical_symbols()
 
 
-def parse_atom_targets(targets: List[str], poscar_path: str) -> List[int]:
+def parse_atom_targets(targets: List[str], poscar_path: str, *, symbols: Sequence[str] | None = None) -> List[int]:
     """Parse a list of target strings into 0-based atom indices.
 
     Args:
         targets: list of strings provided by user (element symbols or indices).
         poscar_path: path to POSCAR file used to map element names to indices.
+        symbols: optional pre-read symbols, avoiding another structure read.
 
     Returns:
         List of unique 0-based atom indices in the order they were first requested.
@@ -60,7 +61,8 @@ def parse_atom_targets(targets: List[str], poscar_path: str) -> List[int]:
     if not os.path.exists(poscar_path):
         raise FileNotFoundError(f"POSCAR not found: {poscar_path}")
 
-    symbols = _read_poscar_symbols(poscar_path)
+    if symbols is None:
+        symbols = _read_poscar_symbols(poscar_path)
     n = len(symbols)
 
     selected = []

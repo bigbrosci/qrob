@@ -77,13 +77,13 @@ def main() -> int:
     poscar_file = "CONTCAR" if os.path.isfile("CONTCAR") else "POSCAR"
 
     try:
-        selected0 = parse_atom_targets(args, poscar_file) if args else []
+        symbols = read_poscar_symbols(poscar_file)
+        selected0 = parse_atom_targets(args, poscar_file, symbols=symbols) if args else []
     except Exception as exc:
         print(f"Error parsing targets: {exc}", file=sys.stderr)
         return 3
 
     mag_dict = get_mag()
-    symbols = read_poscar_symbols(poscar_file)
 
     out_csv = "Magnetization.csv"
     try:

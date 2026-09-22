@@ -123,7 +123,7 @@ The local merge adds a larger legacy toolbox into `actions_py/`. Many of these s
 - `get_G_NxHy.py` – estimate free-energy terms for NxHy species.
 - `get_bib.py` – extract bibliography information from stored references.
 - `get_data_infor.py` – collect summary information from calculation outputs.
-- `get_energy.py` – print energies from VASP outputs using the legacy interface.
+- `deprecated/get_energy.py` – archived Gaussian-log energy utility; requires the legacy `gpm` module.
 - `get_entropy.py` – retrieve entropy estimates for known gas-phase species.
 - `get_file_name_from_log.py` – recover referenced file names from log files.
 - `get_gas_N2.py` – prepare or analyze gas-phase `N2` reference calculations.

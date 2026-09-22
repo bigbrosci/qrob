@@ -29,6 +29,9 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from brain.outcar import get_mag
 INCAR_PATH = REPO_ROOT / "brain" / "incar.py"
 CSV_NAME = "Magnetization.csv"
 
@@ -43,34 +46,8 @@ def read_symbols(structure_path: Path) -> List[str]:
 
 
 def extract_total_moments(outcar_path: Path) -> List[float]:
-    """Extract the total moment column from the last magnetization block."""
-    lines = outcar_path.read_text(errors="ignore").splitlines()
-    header_idx = None
-    for idx, line in enumerate(lines):
-        if "magnetization (x)" in line:
-            header_idx = idx
-    if header_idx is None:
-        raise ValueError(f"magnetization block not found in {outcar_path}")
-
-    start_idx = header_idx + 4
-    totals: List[float] = []
-    for line in lines[start_idx:]:
-        stripped = line.strip()
-        if not stripped:
-            if totals:
-                break
-            continue
-        if stripped.startswith("tot"):
-            break
-        parts = stripped.split()
-        if not parts or not parts[0].isdigit():
-            continue
-        try:
-            totals.append(float(parts[-1]))
-        except ValueError:
-            continue
-
-    return totals
+    """Read only the final magnetization table's total column."""
+    return [values[-1] for values in get_mag(outcar_path).values()]
 
 
 def locate_structure_file(folder: Path) -> Path | None:
@@ -106,9 +83,8 @@ def write_case_csv(folder: Path, symbols: List[str], moments: List[float]) -> Pa
     return out_path
 
 
-def collect_case_rows(csv_paths: Iterable[Path]) -> List[Tuple[str, float]]:
+def collect_case_rows(csv_paths: Iterable[Path]) -> Iterable[Tuple[str, float]]:
     """Read all per-folder CSVs and flatten them into (element, magmom) rows."""
-    rows: List[Tuple[str, float]] = []
     for csv_path in csv_paths:
         with csv_path.open(newline="", encoding="utf-8") as fh:
             reader = csv.DictReader(fh)
@@ -120,8 +96,7 @@ def collect_case_rows(csv_paths: Iterable[Path]) -> List[Tuple[str, float]]:
                     magmom = float(row.get("magmom", "0.0"))
                 except ValueError:
                     continue
-                rows.append((element, magmom))
-    return rows
+                yield element, magmom
 
 
 def summarize_by_element(rows: Iterable[Tuple[str, float]]) -> Dict[str, float]:

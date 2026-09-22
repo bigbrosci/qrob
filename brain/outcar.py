@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Helpers for reading common information from VASP OUTCAR files."""
 
+from __future__ import annotations
+
 from pathlib import Path
 import re
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Union
 
-import numpy as np
-
+from collections import deque
+from itertools import islice
 try:
     from dataclasses import dataclass
 except ImportError:  # pragma: no cover
@@ -51,6 +53,7 @@ class ConvergenceSummary:
     converged: bool
     reason: str
     action: Optional[str]
+    finished: bool = False
 
 
 def _ensure_path(path: Union[str, Path] = "OUTCAR") -> Path:
@@ -92,14 +95,143 @@ def _get_dict_line(lines: List[str]) -> Dict[str, List[int]]:
     return result
 
 
-def get_vasp_version(path: Union[str, Path] = "OUTCAR") -> str:
-    lines = read_lines(path)
-    return lines[0].strip().split()[0]
+def iter_lines(path="OUTCAR"):
+    """Stream decoded lines without retaining the file in memory."""
+    with Path(path).open(encoding="utf-8", errors="ignore") as handle:
+        yield from handle
+
+
+def _reverse_records(path, chunk_size=65536):
+    """Yield (byte offset, line) backwards, including an unterminated last line."""
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+    with Path(path).open("rb") as handle:
+        handle.seek(0, 2)
+        position = handle.tell()
+        end = position
+        pending = b""
+        while position:
+            size = min(position, chunk_size)
+            position -= size
+            handle.seek(position)
+            parts = (handle.read(size) + pending).split(b"\n")
+            pending = parts[0]
+            offset = position + len(pending) + 1
+            records = []
+            for raw in parts[1:]:
+                if offset < end:
+                    records.append((offset, raw.rstrip(b"\r").decode("utf-8", errors="ignore")))
+                offset += len(raw) + 1
+            yield from reversed(records)
+        if end:
+            yield 0, pending.rstrip(b"\r").decode("utf-8", errors="ignore")
+
+
+def reverse_lines(path="OUTCAR", chunk_size=65536):
+    """Read from EOF in bounded chunks; stop as soon as the requested value is found."""
+    for _, line in _reverse_records(path, chunk_size):
+        yield line
+
+
+def last_matching_line(path, marker):
+    for line in reverse_lines(path):
+        if marker in line:
+            return line
+    raise ValueError(f"{marker!r} not found in {path}")
+
+
+def last_block(path, marker):
+    """Stream forwards from the final marker, avoiding earlier ionic steps."""
+    offset = next((offset for offset, line in _reverse_records(path) if marker in line), None)
+    if offset is None:
+        raise ValueError(f"{marker!r} not found in {path}")
+    with Path(path).open("rb") as handle:
+        handle.seek(offset)
+        for raw in handle:
+            yield raw.decode("utf-8", errors="ignore").rstrip("\r\n")
+
+
+def tail_lines(path, count=100):
+    return list(reversed(list(islice(reverse_lines(path), max(0, count)))))
+
+
+_NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[EeDd][-+]?\d+)?"
+_ENERGY = re.compile(r"energy\(sigma->0\)\s*=\s*(" + _NUMBER + r")")
+_TOTEN = re.compile(r"free\s+energy\s+TOTEN\s*=\s*(" + _NUMBER + r")")
+_ITERATION = re.compile(r"Iteration\s+(\d+)\(\s*(\d+)\)")
+
+
+def _number(value):
+    return float(value.replace("D", "E").replace("d", "e"))
+
+
+def get_toten(path="OUTCAR"):
+    for line in reverse_lines(path):
+        match = _TOTEN.search(line) if "TOTEN" in line else None
+        if match:
+            return _number(match.group(1))
+    raise ValueError(f"No TOTEN found in {path}")
+
+
+def get_frequencies(path="OUTCAR"):
+    """Return (real cm-1, real meV, imaginary cm-1, imaginary meV) in file order.
+
+    Preserve repeated/degenerate modes; deduplication is a caller policy.
+    """
+    real, real_mev, imag, imag_mev = [], [], [], []
+    pattern = re.compile(r"(" + _NUMBER + r")\s+cm-1\s+(" + _NUMBER + r")\s+meV")
+    for line in iter_lines(path):
+        imaginary = LOOK_FREQ_I in line
+        if not imaginary and LOOK_FREQ not in line:
+            continue
+        match = pattern.search(line)
+        if match:
+            frequencies, energies = (imag, imag_mev) if imaginary else (real, real_mev)
+            frequencies.append(_number(match.group(1)))
+            energies.append(_number(match.group(2)))
+    return real, real_mev, imag, imag_mev
+
+
+def get_imaginary_mode(path, natoms, mass_weighted=False):
+    """Return displacements for the strongest imaginary mode, storing one mode only."""
+    lines = last_block(path, "Eigenvectors after division by SQRT(mass)") if mass_weighted else iter_lines(path)
+    strongest = 0.0
+    result = None
+    for line in lines:
+        if "f/i" not in line:
+            continue
+        frequency = float(line.split()[6])
+        next(lines, None)  # x/y/z/dx/dy/dz header
+        mode = [row.split()[3:6] for row in islice(lines, natoms)]
+        if len(mode) != natoms or any(len(row) != 3 for row in mode):
+            raise ValueError(f"Incomplete imaginary mode in {path}")
+        if frequency > strongest:
+            strongest, result = frequency, mode
+    if result is None:
+        raise ValueError(f"No imaginary mode found in {path}")
+    return result
+
+
+def get_vasp_version(path="OUTCAR"):
+    return next(iter_lines(path)).strip().split()[0]
 
 
 def get_incar(path: Union[str, Path] = "OUTCAR") -> Dict[str, str]:
-    lines = read_lines(path)
-    dict_line = _get_dict_line(lines)
+    prefix = deque(maxlen=30)
+    lines = []
+    started = False
+    for line in iter_lines(path):
+        if not started:
+            if LOOK_INCAR_START not in line:
+                prefix.append(line)
+                continue
+            lines = list(prefix)
+            started = True
+        lines.append(line)
+        if LOOK_SEPARATE in line:
+            break
+    dict_line = {marker: [i for i, line in enumerate(lines) if marker in line]
+                 for marker in (LOOK_INCAR_START, LOOK_SEPARATE)}
     incar_start_candidates = dict_line[LOOK_INCAR_START]
     if not incar_start_candidates:
         return {}
@@ -135,149 +267,115 @@ def get_incar(path: Union[str, Path] = "OUTCAR") -> Dict[str, str]:
     return dict_incar
 
 
-def get_volume_vectors(path: Union[str, Path] = "OUTCAR") -> Tuple[np.ndarray, List[float], float]:
-    lines = read_lines(path)
-    dict_line = _get_dict_line(lines)
-    volume_lines = dict_line[LOOK_VECTORS][-1]
-    volume = float(lines[volume_lines + 3].strip().split(":")[1].strip())
-    va = [float(i) for i in lines[volume_lines + 5].split()[0:3]]
-    vb = [float(i) for i in lines[volume_lines + 6].split()[0:3]]
-    vc = [float(i) for i in lines[volume_lines + 7].split()[0:3]]
-    length_abc = [float(i) for i in lines[volume_lines + 10].split()[0:3]]
-    vector = np.transpose(np.array([va, vb, vc]))
-    return vector, length_abc, volume
+def get_volume_vectors(path="OUTCAR"):
+    import numpy as np
+    lines = list(islice(last_block(path, LOOK_VECTORS), 11))
+    volume = float(lines[3].split(":")[1])
+    vectors = [[float(value) for value in line.split()[:3]] for line in lines[5:8]]
+    return np.transpose(np.array(vectors)), [float(value) for value in lines[10].split()[:3]], volume
 
 
-def get_kpoints(path: Union[str, Path] = "OUTCAR") -> str:
-    lines = read_lines(path)
-    dict_line = _get_dict_line(lines)
-    line_kpoints = dict_line[LOOK_KPOINTS][0]
-    return lines[line_kpoints].split()[1]
+def get_kpoints(path="OUTCAR"):
+    for line in iter_lines(path):
+        if LOOK_KPOINTS in line:
+            return line.split()[1]
+    raise ValueError(f"No k-points found in {path}")
 
 
-def get_position(path: Union[str, Path] = "OUTCAR") -> List[List[str]]:
-    lines = read_lines(path)
-    dict_line = _get_dict_line(lines)
-    line_position_start = dict_line[LOOK_POSITION][-1]
-    separate_num = dict_line[LOOK_SEPARATE]
-    line_position_end = None
-    for num, line_num in enumerate(separate_num):
-        if line_num == line_position_start + 1 and num + 1 < len(separate_num):
-            line_position_end = separate_num[num + 1]
+def get_position(path="OUTCAR"):
+    rows = []
+    lines = last_block(path, LOOK_POSITION)
+    next(lines)
+    next(lines, None)
+    for line in lines:
+        if not line.strip() or line.lstrip().startswith("---"):
             break
-    if line_position_end is None:
-        return []
-    position_lines = lines[line_position_start + 2 : line_position_end]
-    return [line.split()[0:3] for line in position_lines]
+        rows.append(line.split()[:3])
+    return rows
 
 
-def get_iteration_info(path: Union[str, Path] = "OUTCAR") -> List[Tuple[int, int, float]]:
-    lines = read_lines(path)
-    dict_line = _get_dict_line(lines)
-    lines_iteration = dict_line[LOOK_ITERATION]
-    lines_time_ele_raw = dict_line[LOOK_TIME_ELE]
-    lines_time_ion = set(dict_line[LOOK_TIME_ION])
-    lines_time_ele = [i for i in lines_time_ele_raw if i not in lines_time_ion]
+def get_iteration_info(path="OUTCAR"):
+    iterations = deque()
     output = []
-    for num, line_num in enumerate(lines_iteration):
-        line_ele = lines[line_num].split()
-        ionic_step = int(line_ele[2].replace("(", ""))
-        ele_step = int(line_ele[3].replace(")", ""))
-        ele_time = float(lines[lines_time_ele[num]].split()[-1])
-        output.append((ionic_step, ele_step, ele_time))
+    for line in iter_lines(path):
+        if LOOK_ITERATION in line:
+            match = _ITERATION.search(line)
+            if match:
+                iterations.append((int(match.group(1)), int(match.group(2))))
+        elif LOOK_TIME_ELE in line and LOOK_TIME_ION not in line and iterations:
+            ionic, electronic = iterations.popleft()
+            output.append((ionic, electronic, float(line.split()[-1])))
     return output
 
 
-def get_fermi(path: Union[str, Path] = "OUTCAR") -> str:
-    lines = read_lines(path)
-    dict_line = _get_dict_line(lines)
-    line_fermi = dict_line[LOOK_FERMI][-1]
-    return lines[line_fermi].split()[2]
+def get_fermi(path="OUTCAR"):
+    return last_matching_line(path, LOOK_FERMI).split()[2]
 
 
-def get_vacuum(path: Union[str, Path] = "OUTCAR") -> Tuple[str, str]:
-    lines = read_lines(path)
-    dict_line = _get_dict_line(lines)
-    line_vacuum = dict_line[LOOK_VACUUM][-1]
-    vacuum_up, vacuum_dn = lines[line_vacuum].split()[-2:]
-    return vacuum_up, vacuum_dn
+def get_vacuum(path="OUTCAR"):
+    return tuple(last_matching_line(path, LOOK_VACUUM).split()[-2:])
 
 
-def get_freq(path: Union[str, Path] = "OUTCAR") -> Tuple[List[float], List[float]]:
-    lines = read_lines(path)
-    dict_line = _get_dict_line(lines)
-    nu = []
-    zpe = []
-    for i in dict_line[LOOK_FREQ]:
-        line_ele = lines[i].split()
-        nu.append(float(line_ele[7]))
-        zpe.append(float(line_ele[9]))
-    return nu, zpe
+def get_freq(path="OUTCAR"):
+    real, energies, _, _ = get_frequencies(path)
+    return real, energies
 
 
-def get_freq_i(path: Union[str, Path] = "OUTCAR") -> Tuple[List[float], List[float]]:
-    lines = read_lines(path)
-    dict_line = _get_dict_line(lines)
-    nu = []
-    zpe = []
-    for i in dict_line[LOOK_FREQ_I]:
-        line_ele = lines[i].split()
-        nu.append(float(line_ele[6]))
-        zpe.append(float(line_ele[8]))
-    return nu, zpe
+def get_freq_i(path="OUTCAR"):
+    _, _, imag, energies = get_frequencies(path)
+    return imag, energies
 
 
-def converge_or_not(path: Union[str, Path] = "OUTCAR") -> bool:
-    lines = read_lines(path)
-    return sum(1 for line in lines if LOOK_CONVERGE in line) >= 1
+def converge_or_not(path="OUTCAR"):
+    return any(LOOK_CONVERGE in line for line in reverse_lines(path))
 
 
-def get_mag(path: Union[str, Path] = "OUTCAR") -> Dict[int, List[float]]:
-    lines = read_lines(path)
-    dict_line = _get_dict_line(lines)
-    line_mag_start = dict_line[LOOK_MAGNETIZATION][-1] + 4
-    line_mag_end = 1
-    for num, line in enumerate(lines[line_mag_start:]):
-        if "tot  " in line:
-            line_mag_end = num - 1
+def get_mag(path="OUTCAR"):
+    """Read all orbital columns, including tot, from the final x-magnetization table."""
+    result = {}
+    for line in last_block(path, LOOK_MAGNETIZATION):
+        parts = line.split()
+        if parts and parts[0].isdigit():
+            result[int(parts[0])] = [float(value) for value in parts[1:]]
+        elif result:
             break
-    lines_mag = lines[line_mag_start : line_mag_start + line_mag_end]
-    dict_mag = {}
-    for line in lines_mag:
-        line_ele = line.split()
-        dict_mag[int(line_ele[0])] = [float(i) for i in line_ele[1:]]
-    return dict_mag
+    return result
 
 
-def get_vdw(path: Union[str, Path] = "OUTCAR") -> str:
-    lines = read_lines(path)
-    dict_line = _get_dict_line(lines)
-    line_vdw = dict_line[LOOK_VDW][-1]
-    return lines[line_vdw - 1].rstrip()
-
-
-def get_energy(path: Union[str, Path] = "OUTCAR") -> float:
-    lines = read_lines(path)
-    dict_line = _get_dict_line(lines)
-    line_energy = dict_line[LOOK_ENERGY][-1]
-    return float(lines[line_energy].rstrip().split()[-1])
-
-
-def get_last_iteration(path: Union[str, Path] = "OUTCAR") -> Tuple[int, int]:
-    lines = read_lines(path)
-    ionic_step = 0
-    electronic_step = 0
-    pattern = re.compile(r"Iteration\s+(\d+)\(\s*(\d+)\)")
+def get_vdw(path="OUTCAR"):
+    lines = reverse_lines(path)
     for line in lines:
-        match = pattern.search(line.replace("-", ""))
+        if LOOK_VDW in line:
+            return next(lines).rstrip()
+    raise ValueError(f"No IVDW found in {path}")
+
+
+def get_energy(path="OUTCAR", fallback_toten=False):
+    """Return final sigma->0 energy (eV), optionally falling back to final TOTEN."""
+    toten = None
+    for line in reverse_lines(path):
+        match = _ENERGY.search(line) if "energy(sigma->0)" in line else None
         if match:
-            ionic_step = int(match.group(1))
-            electronic_step = int(match.group(2))
-    return ionic_step, electronic_step
+            return _number(match.group(1))
+        if fallback_toten and toten is None and "TOTEN" in line:
+            match = _TOTEN.search(line)
+            if match:
+                toten = _number(match.group(1))
+    if toten is not None:
+        return toten
+    raise ValueError(f"No DFT energy found in {path}")
 
 
-def has_electronic_convergence_marker(path: Union[str, Path] = "OUTCAR") -> bool:
-    return any(LOOK_ELEC_CONVERGE in line for line in read_lines(path))
+def get_last_iteration(path="OUTCAR"):
+    for line in reverse_lines(path):
+        match = _ITERATION.search(line) if LOOK_ITERATION in line else None
+        if match:
+            return int(match.group(1)), int(match.group(2))
+    return 0, 0
+
+
+def has_electronic_convergence_marker(path="OUTCAR"):
+    return any(LOOK_ELEC_CONVERGE in line for line in reverse_lines(path))
 
 
 def summarize_convergence(path: Union[str, Path]) -> ConvergenceSummary:
@@ -303,11 +401,18 @@ def summarize_convergence(path: Union[str, Path]) -> ConvergenceSummary:
     incar = get_incar(outcar_path)
     nsw = int(float(incar.get("NSW", "0"))) if incar.get("NSW") is not None else 0
     nelm = int(float(incar.get("NELM", "0"))) if incar.get("NELM") is not None else 0
-    ionic_step, electronic_step = get_last_iteration(outcar_path)
+    ionic_step = electronic_step = 0
+    has_elec = has_ionic = finished = False
+    for line in iter_lines(outcar_path):
+        if LOOK_ITERATION in line:
+            match = _ITERATION.search(line)
+            if match:
+                ionic_step, electronic_step = map(int, match.groups())
+        has_elec = has_elec or LOOK_ELEC_CONVERGE in line
+        has_ionic = has_ionic or LOOK_CONVERGE in line
+        finished = finished or "Voluntary context" in line
     is_static = nsw <= 1
     mode = "single-point" if is_static else "relaxation"
-    has_elec = has_electronic_convergence_marker(outcar_path)
-    has_ionic = converge_or_not(outcar_path)
 
     if is_static:
         converged = has_elec and nelm > electronic_step
@@ -330,4 +435,5 @@ def summarize_convergence(path: Union[str, Path]) -> ConvergenceSummary:
         converged=converged,
         reason=reason,
         action=action,
+        finished=finished,
     )

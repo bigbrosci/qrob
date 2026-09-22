@@ -9,7 +9,7 @@ tail of vasp.log are used to classify it as completed or failed.
 from __future__ import annotations
 
 import argparse
-from collections import deque
+from itertools import islice
 import getpass
 from pathlib import Path
 import subprocess
@@ -24,7 +24,7 @@ from actions_py.bootstrap import ensure_repo_root
 
 ensure_repo_root()
 
-from brain.outcar import ConvergenceSummary, summarize_convergence
+from brain.outcar import ConvergenceSummary, summarize_convergence, reverse_lines
 
 
 RESULTS_FILE = "check_results.txt"
@@ -94,8 +94,7 @@ def log_was_killed(log_path: Path, tail_lines: int = 100) -> bool:
     """Look for a Slurm kill marker near the end of the VASP log."""
     if not log_path.is_file():
         return False
-    with log_path.open(encoding="utf-8", errors="ignore") as handle:
-        return any(KILLED_MARKER in line for line in deque(handle, maxlen=tail_lines))
+    return any(KILLED_MARKER in line for line in islice(reverse_lines(log_path), max(0, tail_lines)))
 
 
 def record_completed(summary: ConvergenceSummary) -> None:

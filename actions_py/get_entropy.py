@@ -32,8 +32,9 @@ from ase.thermochemistry import IdealGasThermo
 from scipy import constants as con
 
 
-out = read('./OUTCAR',  format='vasp-out')
-potentialenergy = out.get_potential_energy()
+from brain.outcar import get_energy
+
+potentialenergy = get_energy('./OUTCAR')
 
 
 def get_gas_ads_TS():
@@ -45,8 +46,7 @@ def get_gas_ads_TS():
 
     vib_energies = []
     with open('./freq/OUTCAR') as f_in:
-        lines = f_in.readlines()
-        for num, line in enumerate(lines):
+        for line in f_in:
             if 'cm-1' in line:
                 vib_e = float(line.rstrip().split()[-2])
                 vib_energies.append(vib_e)

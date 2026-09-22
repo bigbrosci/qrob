@@ -24,6 +24,7 @@ from actions_py.bootstrap import ensure_repo_root
 
 ensure_repo_root()
 
+from itertools import islice
 import argparse
 import os
 import re
@@ -33,14 +34,12 @@ from brain.poscar import parse_atom_targets
 
 
 def read_acf(acf_file: str) -> List[float]:
-    with open(acf_file, "r", encoding="utf-8") as file:
-        lines = file.readlines()
-
     charges: List[float] = []
-    for line in lines:
-        parts = line.split()
-        if len(parts) >= 5 and parts[0].isdigit():
-            charges.append(float(parts[4]))
+    with open(acf_file, "r", encoding="utf-8") as file:
+        for line in file:
+            parts = line.split()
+            if len(parts) >= 5 and parts[0].isdigit():
+                charges.append(float(parts[4]))
     return charges
 
 
@@ -72,7 +71,7 @@ def read_potcar_with_zval(potcar_file: str) -> Tuple[List[str], dict[str, float]
 
 def read_poscar_counts(poscar_file: str) -> List[int]:
     with open(poscar_file, "r", encoding="utf-8") as file:
-        lines = file.readlines()
+        lines = list(islice(file, 7))
     return [int(x) for x in lines[6].split()]
 
 

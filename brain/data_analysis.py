@@ -5,6 +5,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+try:
+    from .outcar import get_energy
+except ImportError:
+    from outcar import get_energy
+
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -122,14 +127,11 @@ def plot_neb_profile(dirs: list[str] | None = None, name: str = "neb", out: str 
         outcar = os.path.join(directory, "OUTCAR")
         if not os.path.exists(outcar):
             continue
-        energy = None
-        with open(outcar, "r", encoding="utf-8", errors="ignore") as handle:
-            for line in handle:
-                if "  without" in line:
-                    energy = line.rstrip().split()[-1]
-        if energy is None:
+        try:
+            energy = get_energy(outcar)
+        except ValueError:
             continue
-        energies.append(float(energy))
+        energies.append(energy)
         used_dirs.append(directory)
 
     if not energies:

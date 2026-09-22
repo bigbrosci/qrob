@@ -28,63 +28,22 @@ ensure_repo_root()
 
 import argparse
 import os
-import re
 
-import numpy as np
-from ase.thermochemistry import HarmonicThermo
+from brain.outcar import get_energy, get_frequencies
 
 
 def extract_epot_from_outcar(path: str) -> float:
-    with open(path, "r", encoding="utf-8") as handle:
-        lines = handle.readlines()
-    for line in reversed(lines):
-        if "  without" in line:
-            try:
-                return float(line.strip().split()[-1])
-            except ValueError:
-                continue
-    raise ValueError("Could not find the final energy line containing 'without' in OUTCAR.")
+    return get_energy(path)
 
 
 def extract_vib_energies_from_outcar(path: str) -> tuple[list[float], list[float]]:
-    vib_energies: list[float] = []
-    imag_freqs: list[float] = []
-
-    with open(path, "r", encoding="utf-8") as handle:
-        for line in handle:
-            if "f/i=" in line and "THz" in line:
-                match = re.search(r"([-]?\d+\.\d+)\s+cm-1", line)
-                if match:
-                    imag_freqs.append(float(match.group(1)))
-            elif "f  =" in line and "cm-1" in line:
-                try:
-                    energy_mev = float(line.strip().split()[-2])
-                    vib_energies.append(energy_mev / 1000.0)
-                except (IndexError, ValueError):
-                    continue
-
-    return vib_energies, imag_freqs
+    _, real_mev, imag, _ = get_frequencies(path)
+    return [value / 1000.0 for value in real_mev], imag
 
 
 def extract_zpe_mev_terms(path: str) -> list[float]:
-    zpe_terms: list[float] = []
-    seen_pairs: set[tuple[float, float]] = set()
-
-    with open(path, "r", encoding="utf-8") as handle:
-        for line in handle:
-            if "f  =" not in line:
-                continue
-            parts = line.split()
-            try:
-                freq_cm = float(parts[7])
-                zpe_mev = float(parts[9])
-            except (IndexError, ValueError):
-                continue
-            pair = (freq_cm, zpe_mev)
-            if pair not in seen_pairs:
-                seen_pairs.add(pair)
-                zpe_terms.append(zpe_mev)
-    return zpe_terms
+    real, real_mev, _, _ = get_frequencies(path)
+    return [energy for _, energy in dict.fromkeys(zip(real, real_mev))]
 
 
 def main(argv=None) -> int:
@@ -115,27 +74,22 @@ def main(argv=None) -> int:
         print(f"OUTCAR not found: {outcar_path}", file=sys.stderr)
         return 1
 
-    zpe_terms = extract_zpe_mev_terms(outcar_path)
-    vib_energies, imag_freqs = extract_vib_energies_from_outcar(outcar_path)
+    real, real_mev, imag_freqs, _ = get_frequencies(outcar_path)
+    zpe_terms = [energy for _, energy in dict.fromkeys(zip(real, real_mev))]
+    vib_energies = [value / 1000.0 for value in real_mev]
     if not zpe_terms and not vib_energies:
         print("No vibrational information was parsed from OUTCAR.", file=sys.stderr)
         return 1
 
-    if zpe_terms:
-        e_zpe = sum(zpe_terms) / 2000.0
-    else:
-        thermo = HarmonicThermo(
-            vib_energies=np.array(vib_energies),
-            potentialenergy=extract_epot_from_outcar(outcar_path),
-            ignore_imag_modes=True,
-        )
-        e_zpe = thermo.get_ZPE_correction()
+    e_zpe = sum(zpe_terms) / 2000.0
 
     print(f"ZPE: {e_zpe:.6f} eV")
 
     if args.temperature is not None:
+        from ase.thermochemistry import HarmonicThermo
+
         thermo = HarmonicThermo(
-            vib_energies=np.array(vib_energies),
+            vib_energies=vib_energies,
             potentialenergy=extract_epot_from_outcar(outcar_path),
             ignore_imag_modes=True,
         )

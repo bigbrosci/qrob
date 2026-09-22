@@ -50,9 +50,8 @@ else:
 fn_outcar = dir + '/OUTCAR'
 if not ief:
     if path.exists(fn_outcar):
-        for line in open(fn_outcar, 'r'):
-            if line.find('E-fermi') > -1:
-                ef=float(line.split()[2])
+        from brain.outcar import get_fermi
+        ef = float(get_fermi(fn_outcar))
     else:
         print( 'OUTCAR does not exist!')    
         exit(0)

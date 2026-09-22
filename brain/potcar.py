@@ -77,7 +77,9 @@ def concatenate(ele_list: List[str], version: str = '64', out_path: str = 'POTCA
             candidates = [base / ele / 'POTCAR', base / f'{ele}_sv' / 'POTCAR']
             for p in candidates:
                 if p.exists():
-                    fout.write(p.read_text())
+                    from shutil import copyfileobj
+                    with p.open() as source:
+                        copyfileobj(source, fout)
                     break
             else:
                 raise FileNotFoundError(f'POTCAR for element {ele} not found in {base}')

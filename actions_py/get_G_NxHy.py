@@ -23,6 +23,7 @@ from ase.io import read
 from ase.thermochemistry import HarmonicThermo, IdealGasThermo
 import numpy as np
 from scipy.constants import h, c, e
+from brain.outcar import get_energy
 import sys 
 
 def wavenumber_to_ev(wavenumber_cm1):
@@ -32,15 +33,9 @@ def wavenumber_to_ev(wavenumber_cm1):
     return energy_ev
 
 def get_energy_from_outcar(outcar_path):
-    energy = None
-    with open(outcar_path, 'r') as file:
-        for line in file:
-            if '  without' in line:
-                energy = line.split()[-1]
-    
-    if energy:
-        return float(energy)
-    else:
+    try:
+        return get_energy(outcar_path)
+    except ValueError:
         return None
     
 def extract_wavenumbers_from_outcar(outcar_path):

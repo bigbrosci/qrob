@@ -13,41 +13,14 @@ ensure_repo_root()
 # Get the dband center using the XXX.dat from dos_extract.py script
 import numpy as np
 import sys
+if len(sys.argv) not in (2, 4):
+    print('Command Usage: dcenter.py file [start end]')
+    sys.exit(1)
 file_in = sys.argv[1]
-f_in = open(file_in, 'r')
-lines_in = f_in.readlines()
-f_in.close()
-
-
-if len(sys.argv[:]) == 2: 
-    file_in = sys.argv[1]
-    f_in = open(file_in, 'r')
-    lines_in = f_in.readlines()
-    f_in.close()
-    start = float(lines_in[0].split()[0])
-    end   = float(lines_in[-1].split()[0])
-
-elif len(sys.argv[:]) == 4: 
-    script, file_in, start, end  = sys.argv
-    start = float(start)
-    end = float(end)
-
-else:
-   print('Command Usage:')
-   print('Integerate for the whole range: dcenter.py file')
-   print('Integerate for specific  range: dcenter.py file start end')
-   exit()
-   
-def read_dat(file_in):
-    f = open(file_in, 'r')
-    lines = f.readlines()
-    n_column = len(lines[10].strip().split()) 
-    ISPIN = 0  
-    if n_column == 2:
-        ISPIN = 1 
-    elif n_column == 3:
-        ISPIN = 2
-    return ISPIN 
+data = np.loadtxt(file_in, ndmin=2)
+if data.shape[1] not in (2, 3):
+    raise ValueError("Expected energy and one or two DOS columns")
+start, end = (data[0, 0], data[-1, 0]) if len(sys.argv) == 2 else map(float, sys.argv[2:])
 
 def integer_ele(x,y):
     interval = x[1] - x[0]
@@ -58,20 +31,12 @@ def integer_ele(x,y):
     return ele_lower, ele_upper 
 
 def integer_array(x,y):
-    list_lower = []
-    list_upper = []
-    for i in range(1, len(x)):
-        x_ele = []
-        y_ele = []
-        x_ele.append(x[i-1])
-        x_ele.append(x[i])
-        y_ele.append(y[i-1])
-        y_ele.append(y[i])
-        list_lower.append(integer_ele(x_ele, y_ele)[0])
-        list_upper.append(integer_ele(x_ele, y_ele)[1])
-    sum_lower = sum(list_lower)  
-    sum_upper = sum(list_upper) 
-    return  sum_upper / sum_lower, sum_lower 
+    intervals = np.diff(x)
+    sum_lower = np.sum(0.5 * intervals * (y[1:] + y[:-1]))
+    weighted = x * y
+    sum_upper = np.sum(0.5 * intervals * (weighted[1:] + weighted[:-1]))
+    return sum_upper / sum_lower, sum_lower
+
 
 def get_dat_range(x, start, end):
     l_start = [] 
@@ -85,26 +50,23 @@ def get_dat_range(x, start, end):
     index_e = l_end[0]
     return index_s, index_e   
 
-ISPIN = read_dat(file_in)
-x_in = np.loadtxt(file_in,  usecols=0, unpack=True)
+ISPIN = data.shape[1] - 1
+x_in = data[:, 0]
 index_s, index_e = get_dat_range(x_in, start, end)
 x = x_in[index_s:index_e]
 
 if ISPIN == 1: 
-    y_in = np.loadtxt(file_in,  usecols=1, unpack=True)
+    y_in = data[:, 1]
     y = y_in[index_s: index_e]
-    d_center = integer_array(x,y)[0]
-    num_elec = integer_array(x,y)[1]
+    d_center, num_elec = integer_array(x, y)
     print( 'd-band center is %s' %(d_center)  )
     print( 'electron counting %s' %(num_elec) )
 elif ISPIN == 2 : 
-    y1_in, y2_in  = np.loadtxt(file_in,  usecols=(1, 2), unpack=True)
+    y1_in, y2_in = data[:, 1], data[:, 2]
     y1 = y1_in[index_s: index_e]
     y2 = y2_in[index_s: index_e]
-    d_center1 = integer_array(x, y1)[0]
-    d_center2 = integer_array(x, y2)[0]
-    num_elec1 = integer_array(x, y1)[1]
-    num_elec2 = integer_array(x, y2)[1]
+    d_center1, num_elec1 = integer_array(x, y1)
+    d_center2, num_elec2 = integer_array(x, y2)
     print(  'd-band center for SPIN-1 is %10.6f ' %(d_center1) )
     print(  'd-band center for SPIN-2 is %10.6f ' %(d_center2) )
     print(  'd-band_average is %10.6f'            %((d_center1 + d_center2) / 2) )
