@@ -9,9 +9,64 @@ import sys
 from difflib import SequenceMatcher
 
 try:
-    from .data import j_value, mag_value, mag_value_database, u_value
+    from .data import j_value, mag_value, u_value
 except ImportError:
-    from data import j_value, mag_value, mag_value_database, u_value
+    from data import j_value, mag_value, u_value
+
+# Database-derived initial moments; missing elements use the defaults in data.py.
+# BEGIN MAG_VALUE_DATABASE
+mag_value_database = {
+    'Ag': 0.0,
+    'Au': 0.0,
+    'Co': 1.4920536,
+    'Cr': 0.6811982758620689,
+    'Cu': 0.0012407407407407538,
+    'Fe': 2.525773972602741,
+    'Ga': 0.0,
+    'In': 0.0,
+    'Ir': 0.0,
+    'Mn': 2.82822510822511,
+    'Mo': -8.501118568232649e-05,
+    'Ni': 0.25791916167664664,
+    'O': 0.016657937806873968,
+    'Os': 0.005713740458015268,
+    'Pd': 0.0,
+    'Pt': 0.0,
+    'Re': -0.0009162895927601814,
+    'Rh': 0.015871794871794864,
+    'Ru': 0.06389696969696973,
+    'Sn': 0.0,
+    'W': 0.00011492281303602058,
+    'Zn': 0.0
+}
+
+
+# Sample counts for each database-derived moment.
+mag_value_database_counts = {
+    'Ag': {'atom_count': 1232, 'source_csv_count': 66},
+    'Au': {'atom_count': 1288, 'source_csv_count': 70},
+    'Co': {'atom_count': 1250, 'source_csv_count': 68},
+    'Cr': {'atom_count': 348, 'source_csv_count': 35},
+    'Cu': {'atom_count': 56430, 'source_csv_count': 1222},
+    'Fe': {'atom_count': 1314, 'source_csv_count': 73},
+    'Ga': {'atom_count': 842, 'source_csv_count': 53},
+    'In': {'atom_count': 266, 'source_csv_count': 28},
+    'Ir': {'atom_count': 1316, 'source_csv_count': 73},
+    'Mn': {'atom_count': 462, 'source_csv_count': 41},
+    'Mo': {'atom_count': 894, 'source_csv_count': 60},
+    'Ni': {'atom_count': 1002, 'source_csv_count': 54},
+    'O': {'atom_count': 1222, 'source_csv_count': 1222},
+    'Os': {'atom_count': 1310, 'source_csv_count': 73},
+    'Pd': {'atom_count': 1328, 'source_csv_count': 76},
+    'Pt': {'atom_count': 1300, 'source_csv_count': 76},
+    'Re': {'atom_count': 1326, 'source_csv_count': 75},
+    'Rh': {'atom_count': 1326, 'source_csv_count': 75},
+    'Ru': {'atom_count': 1320, 'source_csv_count': 74},
+    'Sn': {'atom_count': 168, 'source_csv_count': 22},
+    'W': {'atom_count': 1166, 'source_csv_count': 70},
+    'Zn': {'atom_count': 1120, 'source_csv_count': 60},
+}
+# END MAG_VALUE_DATABASE
 
 try:
     from ase.io import read

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Build a magnetization database from VASP folders and refresh `brain/data.py`.
+"""Build a magnetization database from VASP folders and refresh `brain/incar.py`.
 
 Workflow:
 1. Find folders that contain `OUTCAR` plus `POSCAR` or `CONTCAR`.
 2. For each folder, export `Magnetization.csv` with 0-based atom index,
    element symbol, and total per-atom magnetic moment.
 3. Aggregate all per-atom CSVs by element and compute the mean moment.
-4. Write the result into `brain/data.py` as `mag_value_database`.
+4. Write the result into `brain/incar.py` as `mag_value_database`.
 
 If no database folders are found, the script still keeps the codebase usable by
 writing an empty `mag_value_database = {}` block.
@@ -29,8 +29,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DATA_PATH = REPO_ROOT / "brain" / "data.py"
-SUMMARY_CSV = REPO_ROOT / "mag_value_database_summary.csv"
+INCAR_PATH = REPO_ROOT / "brain" / "incar.py"
 CSV_NAME = "Magnetization.csv"
 
 
@@ -143,7 +142,7 @@ def summarize_by_element(rows: Iterable[Tuple[str, float]]) -> Dict[str, float]:
 
 
 def render_mag_database(summary: Dict[str, float]) -> str:
-    """Render the Python assignment used inside `brain/data.py`."""
+    """Render the Python assignment used inside `brain/incar.py`."""
     if not summary:
         return "mag_value_database = {}"
 
@@ -153,30 +152,33 @@ def render_mag_database(summary: Dict[str, float]) -> str:
     return "mag_value_database = {\n" + body + "\n}"
 
 
-def update_data_py(summary: Dict[str, float]) -> None:
-    """Replace the marked database block in `brain/data.py`."""
-    text = DATA_PATH.read_text(encoding="utf-8")
+def update_incar_py(summary: Dict[str, float], counts: Dict[str, Dict[str, int]]) -> None:
+    """Replace the marked database block in `brain/incar.py`."""
+    text = INCAR_PATH.read_text(encoding="utf-8")
     replacement = (
         "# BEGIN MAG_VALUE_DATABASE\n"
-        f"{render_mag_database(summary)}\n"
+        f"{render_mag_database(summary)}\n\n"
+        "# Sample counts for each database-derived moment.\n"
+        "mag_value_database_counts = {\n"
+        + "".join(f"    {element!r}: {counts[element]!r},\n" for element in sorted(summary))
+        + "}\n"
         "# END MAG_VALUE_DATABASE"
     )
 
     pattern = re.compile(
-        r"# BEGIN MAG_VALUE_DATABASE\nmag_value_database\s*=\s*\{.*?\}\n# END MAG_VALUE_DATABASE",
+        r"# BEGIN MAG_VALUE_DATABASE\n.*?# END MAG_VALUE_DATABASE",
         re.S,
     )
     if not pattern.search(text):
         raise RuntimeError(
-            "Could not find the MAG_VALUE_DATABASE marker block in brain/data.py"
+            "Could not find the MAG_VALUE_DATABASE marker block in brain/incar.py"
         )
 
-    DATA_PATH.write_text(pattern.sub(replacement, text), encoding="utf-8")
+    INCAR_PATH.write_text(pattern.sub(replacement, text), encoding="utf-8")
 
 
-def maybe_write_summary_csv(summary: Dict[str, float], csv_paths: List[Path]) -> None:
-    """Write a compact summary CSV for inspection."""
-    fieldnames = ["element", "average_magmom", "atom_count", "source_csv_count"]
+def collect_sample_counts(csv_paths: List[Path]) -> Dict[str, Dict[str, int]]:
+    """Count atoms and source files for the embedded database summary."""
     atom_counts: Dict[str, int] = defaultdict(int)
     source_counts: Dict[str, int] = defaultdict(int)
 
@@ -193,18 +195,10 @@ def maybe_write_summary_csv(summary: Dict[str, float], csv_paths: List[Path]) ->
         for element in seen_in_file:
             source_counts[element] += 1
 
-    with SUMMARY_CSV.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=fieldnames)
-        writer.writeheader()
-        for element in sorted(summary.keys()):
-            writer.writerow(
-                {
-                    "element": element,
-                    "average_magmom": summary[element],
-                    "atom_count": atom_counts[element],
-                    "source_csv_count": source_counts[element],
-                }
-            )
+    return {
+        element: {"atom_count": atom_counts[element], "source_csv_count": source_counts[element]}
+        for element in sorted(atom_counts)
+    }
 
 
 def scan_database_roots(roots: Iterable[Path]) -> List[Path]:
@@ -245,7 +239,7 @@ def process_case(folder: Path) -> Path | None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Build per-folder magnetization CSVs and refresh brain/data.py"
+        description="Build per-folder magnetization CSVs and refresh brain/incar.py"
     )
     parser.add_argument(
         "roots",
@@ -256,7 +250,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Scan and report but do not write data.py or the summary CSV",
+        help="Scan and report but do not update brain/incar.py",
     )
     return parser
 
@@ -281,14 +275,12 @@ def main(argv: List[str]) -> int:
     print(f"Elements in summary: {len(summary)}")
 
     if args.dry_run:
-        print("Dry run requested; not updating brain/data.py.")
+        print("Dry run requested; not updating brain/incar.py.")
         return 0
 
-    update_data_py(summary)
-    maybe_write_summary_csv(summary, csv_paths)
+    update_incar_py(summary, collect_sample_counts(csv_paths))
 
-    print(f"Updated {DATA_PATH}")
-    print(f"Wrote summary CSV to {SUMMARY_CSV}")
+    print(f"Updated {INCAR_PATH}")
     return 0
 
 

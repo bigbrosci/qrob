@@ -72,13 +72,13 @@ ACTION_REGISTRY: Dict[str, ActionInfo] = {
     },
     "update_incar": {
         "script": BASE_DIR / "update_incar.py",
-        "description": "Scan a magnetization database, export per-folder CSVs, and refresh brain/data.py.",
+        "description": "Scan a magnetization database, export per-folder CSVs, and refresh brain/incar.py.",
         "usage": "python update_incar.py /path/to/database",
         "category": "Analysis",
         "dependencies": ["ase"],
         "brain_helpers": [],
         "required_inputs": ["OUTCAR", "POSCAR or CONTCAR"],
-        "outputs": ["Magnetization.csv", "mag_value_database_summary.csv"],
+        "outputs": ["Magnetization.csv", "brain/incar.py"],
         "notes": "Builds the database-derived MAGMOM dictionary used by brain.incar and the GUI.",
     },
     "get_bader": {

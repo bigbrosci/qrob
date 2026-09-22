@@ -18,11 +18,9 @@ QRob 就像一个专注 VASP 的机器人：`brain/` 封装参数与读写逻辑
 
 ### 2.1 Create the Python environment
 
-1. Ensure `conda` or `mamba` is installed. The pinned environment is under `manual/qrob_env.yml`.
+1. Ensure `conda`  is installed. The pinned environment is under `manual/qrob_env.yml`.
 2. From the repo root, run either:
    ```bash
-   mamba env create -f manual/qrob_env.yml
-   # or
    conda env create -f manual/qrob_env.yml
    ```
 3. Activate it with `conda activate qrob`. If you prefer a different name, edit the `name:` field in the YAML before creating the environment.

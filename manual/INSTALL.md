@@ -7,41 +7,15 @@ This document provides step-by-step instructions to manually install q-robot. Fo
 Clone the q-robot repository from GitHub:
 
 ```bash
+mkdir ~/bin 
+cd ~/bin 
 git clone https://github.com/bigbrosci/qrob.git
 ```
 
-Alternatively, if you already have a local copy, you can pull the latest changes:
-
-```bash
-cd /path/to/qrob
-git pull
-```
-
-## Step 2: Move the Folder to Your Desired Location
-
-Move the cloned repository to your preferred installation path. We recommend placing it in one of the following locations:
-
-- **Option A (Recommended):** `$HOME/Dropbox/bin/qrob`
-- **Option B:** `$HOME/bin/qrob`  
-- **Option C:** Any custom location of your choice
-
-Example (using Option A):
-
-```bash
-# If you cloned to a temporary location, move it:
-mv ~/Downloads/qrob ~/Dropbox/bin/qrob
-
-# Or if it's already in the right place, you can skip this step
-```
-
-## Step 3: Update Your Shell Configuration File
-
-Add the q-robot environment variables to your shell profile. Choose the appropriate file for your operating system:
+## Step 2: Add the q-robot environment variables to your shell profile. Choose the appropriate file for your operating system:
 
 - **Linux (Bash):** `~/.bashrc`
 - **macOS (Zsh):** `~/.zshrc`
-- **macOS (Bash):** `~/.bash_profile`
-- **Windows (Git Bash):** `~/.bashrc`
 
 ### For Linux/macOS Bash/Zsh:
 
@@ -55,7 +29,6 @@ export PATH=$PATH:$ROBOT/actions:$ROBOT/friends/vtstscripts-1040
 export PYTHONPATH=$PYTHONPATH:$ROBOT/brain
 # <<< q-robot settings <<<
 ```
-
 Replace `/path/to/installation` with your actual installation path (e.g., `/home/username/Dropbox/bin` if you installed to `/home/username/Dropbox/bin/qrob`).
 
 **Example for `/home/qli/Dropbox/bin/qrob`:**
@@ -69,23 +42,17 @@ export PYTHONPATH=$PYTHONPATH:$ROBOT/brain
 # <<< q-robot settings <<<
 ```
 
-### For Windows (PowerShell):
-
-If using PowerShell, add the following to your PowerShell profile (location depends on your setup):
-
-```powershell
-# >>> q-robot settings >>>
-$env:ROBOT = "C:\path\to\qrob"
-$env:Path = "$env:Path;${env:ROBOT}\actions;${env:ROBOT}\friends\vtstscripts-1040"
-# <<< q-robot settings >>>
+```bash
+cat /path/to/qrob/manual/bashrc >> ~/.bashrc  # for Linux Bash
+cat /path/to/qrob/manual/zshrc >> ~/.zshrc    # for macOS Zsh 
 ```
+
 
 After editing, save the file and reload your shell:
 
 ```bash
 source ~/.bashrc      # For Linux/Git Bash
 source ~/.zshrc       # For macOS Zsh
-source ~/.bash_profile # For macOS Bash
 ```
 
 Or restart your terminal for the changes to take effect.
@@ -104,14 +71,6 @@ The environment file should be located at:
 
 ### Create the Environment
 
-Choose the tool you have installed (mamba is recommended for speed):
-
-**Using Mamba (recommended):**
-
-```bash
-mamba env create -f ~/Dropbox/bin/qrob/manual/qrob_env.yml
-```
-
 **Using Conda:**
 
 ```bash
@@ -126,8 +85,6 @@ When you want to use q-robot, activate the environment:
 
 ```bash
 conda activate qrob
-# or
-mamba activate qrob
 ```
 
 ## Verification
@@ -148,17 +105,3 @@ echo $PATH | grep -o "[^:]*actions[^:]*"
 conda activate qrob
 python -c "import qrob; print('q-robot imported successfully')" # If applicable
 ```
-
-## Troubleshooting
-
-- **Environment variables not loading:** Make sure you reloaded your shell configuration with `source ~/.bashrc` (or appropriate file).
-- **Command not found:** Verify the `ROBOT` variable is set and the path exists.
-- **Conda/Mamba environment creation fails:** Check that your environment file is valid YAML and all dependencies are available.
-- **Permission denied:** If scripts don't run, check file permissions: `chmod +x $ROBOT/actions/*`
-
-## Notes
-
-- The installation path can be customized to any location on your system.
-- Store your installation in a location that won't be frequently moved or deleted.
-- For collaborative work, consider using version control (git) to stay updated with changes.
-- The conda environment is optional but recommended for consistent dependency management.
