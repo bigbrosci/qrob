@@ -18,7 +18,7 @@ Creat POSCAR for improved dimer calculations
 IBRION = 5
 POTIM = 0.015
 NFREE = 2
-NWRITE = 3 ### Must be 3
+NWRITE = 3  # optional; the default OUTCAR also works
 2) run this script:
 get_dimer.py 
 3) use the POSCAR for IDM calc.
@@ -30,10 +30,7 @@ POTIM = 0.05
     
 """
 
-import numpy as np
-from ase.io import read, write
-import os
-from sys import exit
+from ase.io import read
 
 
 # os.chdir('/home/win.udel.edu/qli/Desktop/freq/')
@@ -45,7 +42,7 @@ model_positions = model.get_positions()
 # print(len(model))
 
 from brain.outcar import get_imaginary_mode
-vib_dis = get_imaginary_mode('OUTCAR', len(model), mass_weighted=True)
+vib_dis = get_imaginary_mode('OUTCAR', len(model), mass_weighted=True, masses=model.get_masses())
 
 model.write('POSCAR_dimer', vasp5=True)
 pos_dimer = open('POSCAR_dimer', 'a')

@@ -160,3 +160,18 @@ def test_geometry_and_imaginary_mode(tmp_path):
     expected = [['0.7', '0.8', '0.9'], ['1.0', '1.1', '1.2']]
     assert outcar.get_imaginary_mode(path, 2) == expected
     assert outcar.get_imaginary_mode(path, 2, mass_weighted=True) == expected
+
+
+def test_imaginary_mode_without_nwrite_3(tmp_path):
+    path = tmp_path / 'OUTCAR'
+    path.write_text('Eigenvectors and eigenvalues of the dynamical matrix\n'
+                    '1 f/i= 1 THz 2 2PiTHz 10 cm-1 1 meV\nX Y Z dx dy dz\n'
+                    '0 0 0 1 0 0\n0 0 0 0 4 0\n'
+                    '2 f/i= 2 THz 3 2PiTHz 20 cm-1 2 meV\nX Y Z dx dy dz\n'
+                    '0 0 0 2 0 0\n0 0 0 0 8 0\n')
+    mode = outcar.get_imaginary_mode(path, 2, mass_weighted=True, masses=[1, 16])
+    assert [[float(value) for value in row] for row in mode] == [[2, 0, 0], [0, 2, 0]]
+    with pytest.raises(ValueError, match='provide atomic masses'):
+        outcar.get_imaginary_mode(path, 2, mass_weighted=True)
+    with pytest.raises(ValueError, match='one positive atomic mass'):
+        outcar.get_imaginary_mode(path, 2, mass_weighted=True, masses=[1])

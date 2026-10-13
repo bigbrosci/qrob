@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Helpers for reading common information from VASP OUTCAR files."""
 
-from __future__ import annotations
-
+from math import sqrt
 from pathlib import Path
 import re
 from typing import Dict, List, Optional, Union
@@ -192,9 +191,23 @@ def get_frequencies(path="OUTCAR"):
     return real, real_mev, imag, imag_mev
 
 
-def get_imaginary_mode(path, natoms, mass_weighted=False):
-    """Return displacements for the strongest imaginary mode, storing one mode only."""
-    lines = last_block(path, "Eigenvectors after division by SQRT(mass)") if mass_weighted else iter_lines(path)
+def get_imaginary_mode(path, natoms, mass_weighted=False, masses=None):
+    """Return the strongest imaginary mode, optionally divided by sqrt(atomic mass)."""
+    divide_by_mass = False
+    if mass_weighted:
+        try:
+            lines = last_block(path, "Eigenvectors after division by SQRT(mass)")
+            next(lines)  # force marker lookup before falling back
+        except ValueError:
+            if masses is None:
+                raise ValueError("Mass-divided eigenvectors are absent; provide atomic masses or rerun with NWRITE=3")
+            if len(masses) != natoms or any(mass <= 0 for mass in masses):
+                raise ValueError("Expected one positive atomic mass per atom")
+            lines = last_block(path, "Eigenvectors and eigenvalues of the dynamical matrix")
+            next(lines)
+            divide_by_mass = True
+    else:
+        lines = iter_lines(path)
     strongest = 0.0
     result = None
     for line in lines:
@@ -206,7 +219,10 @@ def get_imaginary_mode(path, natoms, mass_weighted=False):
         if len(mode) != natoms or any(len(row) != 3 for row in mode):
             raise ValueError(f"Incomplete imaginary mode in {path}")
         if frequency > strongest:
-            strongest, result = frequency, mode
+            strongest = frequency
+            result = ([[f"{float(value) / sqrt(mass):.8g}" for value in row]
+                       for row, mass in zip(mode, masses)]
+                      if divide_by_mass else mode)
     if result is None:
         raise ValueError(f"No imaginary mode found in {path}")
     return result

@@ -135,3 +135,24 @@ X Y Z dx dy dz
     corrected = read(tmp_path / 'POSCAR_corrected', format='vasp')
     np.testing.assert_allclose(corrected.positions, [[0.07, 0.08, 0.09], [1.1, 0.11, 0.12]])
     assert (tmp_path / 'POSCAR_dimer').read_text().endswith('0.7 0.8 0.9\n1.0 1.1 1.2\n')
+
+
+def test_get_dimer_default_nwrite(tmp_path):
+    pytest.importorskip('ase')
+    from ase import Atoms
+    from ase.io import write
+    atoms = Atoms('HO', positions=[[0, 0, 0], [1, 0, 0]], cell=[10, 10, 10], pbc=True)
+    write(tmp_path / 'POSCAR_relax', atoms, format='vasp')
+    (tmp_path / 'OUTCAR').write_text('''Eigenvectors and eigenvalues of the dynamical matrix
+1 f/i= 2 THz 3 2PiTHz 20 cm-1 2 meV
+X Y Z dx dy dz
+0 0 0 1 0 0
+1 0 0 0 4 0
+''')
+    result = subprocess.run([sys.executable, str(ROOT / 'actions_py/get_dimer.py')],
+                            cwd=tmp_path, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    lines = (tmp_path / 'POSCAR_dimer').read_text().splitlines()
+    axis = [[float(value) for value in line.split()] for line in lines[-2:]]
+    np.testing.assert_allclose(axis, [[1 / np.sqrt(atoms[0].mass), 0, 0],
+                                     [0, 4 / np.sqrt(atoms[1].mass), 0]], rtol=1e-7)

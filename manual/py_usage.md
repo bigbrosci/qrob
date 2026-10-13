@@ -62,7 +62,7 @@ The `actions_py/` folder gathers the Python utilities that wrap the `brain/` kno
 - `vtotav.py` – average a LOCPOT/CHGCAR file along a direction to produce one-dimensional curves; call `vtotav.py LOCPOT z`.
 - `dos_extract.py` – sum DOS for selected atoms/orbitals by reading `DOSCAR` and `POSCAR`; usage `dos_extract.py C s DOS_out.dat` (select atoms and output file name).
 - `dcenter.py` – integrate `.dat` files (e.g., produced by `dos_extract.py`) to compute d-band center between a start/end energy.
-- `get_dimer.py` – prepare the POSCAR needed for a dimer calculation after a frequency run (requires `IBRION=5`/`NWRITE=3`); simply run `get_dimer.py` to generate the IDM-friendly structure.
+- `get_dimer.py` – prepare the POSCAR needed for a dimer calculation after a frequency run (requires `IBRION=5`; `NWRITE=3` is optional); simply run `get_dimer.py` to generate the IDM-friendly structure.
 - `get_dis_AB.py` – print the distance between two atom indices: `get_dis_AB.py 0 3`.
 - `get_metal_bulk.py` – generate fcc, bcc, or hcp metal bulk structures with ASE. Examples: `get_metal_bulk.py Pt fcc --a 3.92`, `get_metal_bulk.py Fe bcc --a 2.87`, or `get_metal_bulk.py Ru hcp --a 2.706 --c 4.282`.
 - `bm.py` – fit Birch–Murnaghan data; supply a CSV with lattice parameter and energy columns (for example, `bm.py data.csv`).
