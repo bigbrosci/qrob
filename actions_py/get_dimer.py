@@ -45,11 +45,7 @@ model_positions = model.get_positions()
 # print(len(model))
 
 from brain.outcar import get_imaginary_mode
-try:
-    vib_dis = get_imaginary_mode('OUTCAR', len(model), mass_weighted=True)
-except ValueError as exc:
-    print(f"{exc}. Check frequency results; NWRITE must be 3.")
-    sys.exit(1)
+vib_dis = get_imaginary_mode('OUTCAR', len(model), mass_weighted=True)
 
 model.write('POSCAR_dimer', vasp5=True)
 pos_dimer = open('POSCAR_dimer', 'a')
