@@ -6,8 +6,6 @@ By default this module looks for POTCAR libraries under:
 - ``~/Dropbox/bin/qrob/books/potpaw_PBE.<version>`` (legacy fallback)
 """
 
-from __future__ import annotations
-
 import ast
 from pathlib import Path
 from typing import Dict, List, Tuple

@@ -22,7 +22,7 @@ ensure_repo_root()
 
 try:
     from brain.potcar import concatenate, read_potcar
-except Exception:
+except ImportError:
     # fallback for legacy module (potcar.py in repo root)
     try:
         from potcar import concatenate, read_potcar
