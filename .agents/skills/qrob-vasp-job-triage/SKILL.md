@@ -5,6 +5,9 @@ description: Diagnose QRob VASP calculation status, OUTCAR convergence, and Slur
 
 # VASP job triage
 
+Start from the repository AGENTS.md, PROJECT_MEMORY.md, and HANDOFF.md. Keep
+incident status in PROJECT_MEMORY.md rather than in this reusable procedure.
+
 Read `actions_py/check_converge.py`, `brain/outcar.py`, and `actions_bash/autocheck.sh` for the specific task. Review the calculation directory, its Slurm work directory, `OUTCAR`, log tail, and tracking lists before proposing a rerun.
 
 1. Check whether the calculation is still running or pending in Slurm. `check_converge.py` matches jobs by work directory; active jobs are left unclassified. If Slurm is unavailable, its `--skip-slurm` option classifies output off-cluster, but does not establish that a job is inactive.
@@ -13,3 +16,27 @@ Read `actions_py/check_converge.py`, `brain/outcar.py`, and `actions_bash/autoch
 4. For a requested automation change, preserve its existing status-code contract and test the active, completed, scratch, and rerun branches with mocked Slurm commands before using it on a live cluster.
 
 Explain the evidence for the classification and identify any missing scheduler or output data. Submit or resubmit only as part of a user-requested job action.
+
+## Evidence and Recovery
+
+- Establish the target cluster and actual calculation directory; record the
+  relevant observation time and timezone. A queue check on one device or under
+  one account cannot establish every device's job state. Missing Slurm access
+  is unknown state, not evidence that a job stopped.
+- check_converge.py appends results/tracking lists when classifying a finished
+  calculation. Read source and saved evidence first for a read-only request;
+  use temporary fixture directories for tests that exercise these writes.
+- Separate scheduler termination, electronic convergence, ionic convergence,
+  and completed output evidence. Distinguish energy(sigma->0) from TOTEN and
+  use the existing bounded/streaming readers rather than full OUTCAR scans.
+- Before an authorized rerun, inspect the existing restart/save logic and
+  preserve original inputs, outputs, tracking lists, exit codes, and failures.
+  Record recovery separately; a later success must not erase the original
+  failure or imply unrelated calculations passed.
+- Reuse focused mocked tests for changed automation contracts. Do not call
+  autocheck.sh or submit jobs as a verification shortcut. Report static/mock
+  results separately from actual scheduler and VASP execution.
+
+At delivery, record the affected paths, evidence, validation limits, outstanding
+issues, and next action in PROJECT_MEMORY.md. Cross-device entrypoint changes
+also belong in HANDOFF.md. Do not store credentials or private cluster data.

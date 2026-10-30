@@ -23,6 +23,40 @@ reformat.py POSCAR d
 reformat.py CONTCAR
 ```
 
+Output retains selective-dynamics flags and ends after the expected atom
+coordinates; the optional velocity block is removed. If trimming fails, the
+script prints a warning; check the output before using it.
+
+## get_potcars.py (Standalone)
+
+This separate utility lives at `~/bin/qrob_private/anvil/get_potcars.py`, outside
+the QRob repository (moved on 2026-10-30).
+
+Requires only the Python standard library; intended for Python 3.5-3.10.
+It can run outside this repository without ASE or QRob modules. Edit POTCAR_DIR
+near the top of the file; its initial value is
+`/anvil/projects/x-chm260090/bin/potcars`.
+
+```bash
+get_potcars.py
+get_potcars.py Fe C H O
+get_potcars.py Fe_pv O
+```
+
+- No arguments: read ./POSCAR, falling back to ./00/POSCAR for NEB.
+- Explicit arguments: preserve the given order, including repeated entries.
+- For each name, look up `<POTCAR_DIR>/<name>/POTCAR`; a bare element also
+  falls back to `<element>_sv/POTCAR`. Explicit variants use only their exact name.
+- VASP5 reads the element/count header. VASP4 requires a title containing only
+  element symbols matching the count groups; otherwise give explicit arguments.
+- Write ./POTCAR, replacing an existing output only after copying succeeds.
+  Missing potentials or invalid input leave an existing POTCAR unchanged.
+
+With the script outside PATH, use `python3 /path/to/get_potcars.py` followed by
+the same arguments. Python compatibility does not imply the entire QRob
+repository supports those versions. The repository-integrated alternative is
+pp.py with brain/potcar.py and its own library discovery rules.
+
 ## sort_atoms.py
 
 Purpose
@@ -47,7 +81,8 @@ sort_atoms.py -i POSCAR --mode z-within-element --elements Ni C H O
 
 ## Notes
 
-- These scripts expect ASE in the active Python environment.
+- Structure tools such as reformat.py and sort_atoms.py require ASE.
+  The standalone get_potcars.py does not.
 - Many other maintained commands live beside them in `actions_py/`; read the script header or `registry.py` for quick hints on dependencies and outputs.
 
 ## Efficient analysis of large outputs

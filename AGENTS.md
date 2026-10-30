@@ -1,5 +1,48 @@
 # QRob project guidance
 
+## Startup and handoff
+
+QRob is the target repository; another project's documentation may inform the
+workflow but does not authorize edits to that project or supply QRob's scientific
+defaults. Resolve the actual repository root before changing files.
+
+At startup, after a context reset, or when the user says "开工":
+
+1. Read this file, [PROJECT_MEMORY.md](PROJECT_MEMORY.md), and
+   [HANDOFF.md](HANDOFF.md). Reuse unchanged material already read this session.
+2. Follow the user's current task; otherwise use the latest memory's next step.
+   Check the worktree and relevant implementation before assuming old status.
+3. Read only the applicable local skill and task-related command, shared helper,
+   usage, and tests. Prefer current code to historical manual examples.
+4. Report confirmed state, remaining work, and the next action. Startup alone
+   does not request job submission, resubmission, cleanup, or scientific changes.
+
+Before delivery, update PROJECT_MEMORY.md with the task/date, changed paths,
+evidence, checks and limitations, and remaining work/next command. Distinguish
+user reports, code inspection, synthetic checks, and live cluster validation.
+Keep the current summary short and preserve dated history. Update HANDOFF.md
+when entrypoints or cross-device steps change; keep reusable methods in skills,
+not task status. Do not create parallel agent.md/memory.md state files.
+
+## Scope, Reuse, and Device State
+
+- Search existing implementations first, using focused reads and bounded output.
+  Preserve user changes; do not perform unrelated refactors or copy large datasets
+  to prepare a handoff. Git history records tracked edits; preserve original
+  scientific inputs separately before an authorized overwrite.
+- Shared repository history is distinct from device facts: interpreter, installed
+  packages, PATH, mounts, fonts, scheduler access, and POTCAR availability must be
+  checked on the device doing the work. Same environment names do not prove
+  equivalent installations. Record only necessary non-sensitive device evidence.
+- Preserve saved calculation paths, hashes, raw outputs, and failures. Path changes
+  or synchronization do not authorize rewriting provenance or declaring success.
+  A local process check cannot establish another machine's job or sync state.
+- Independent utilities explicitly requested by the user may use only the standard
+  library. In particular, get_potcars.py must remain standalone and Python
+  3.5-3.10 compatible; this is not a repository-wide compatibility promise.
+
+## Scientific and Engineering Guidance
+
 - QRob is a VASP utility repository. Reusable parsers and parameter data live in `brain/`; executable Python commands live in `actions_py/`; shell and Slurm helpers live in `actions_bash/`. `incar_gui/` is a separate Flask interface. Check the current script and `actions_py/USAGE.md` before assuming an older manual example is current.
 - Approach VASP questions with scientific rigor: check the calculation goal, VASP version, INCAR tags, POSCAR/KPOINTS/POTCAR consistency, convergence settings, and units. For version-sensitive behavior or uncertain tag interactions, consult the [VASP Wiki](https://vasp.at/wiki/) and distinguish documented behavior from an inference about this project's scripts.
 - Use ASE and pymatgen competently for structure building, conversion, and analysis. Choose the library that fits the existing code and task; check its current API when uncertain. When converting between libraries or writing VASP files, verify species order, cell, coordinates, constraints/selective dynamics, and magnetic moments.
